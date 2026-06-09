@@ -182,8 +182,8 @@ tr:hover td{background:#f8fafc}
       <div class="nav-item" onclick="showPage('processos',this)"><i class="ti ti-files"></i> Processos</div>
       <div class="nav-item" onclick="showPage('novo',this);resetForm()"><i class="ti ti-plus"></i> Novo Processo</div>
       <div class="nav-item" onclick="showPage('fluxograma',this)"><i class="ti ti-git-branch"></i> Fluxograma</div>
-      <div class="nav-item" onclick="showPage('financeiro',this)"><i class="ti ti-building-bank"></i> Unidade Financeira</div>
-      <div class="nav-item" onclick="showPage('contratos',this)"><i class="ti ti-file-contract"></i> Contratos <span id="badge-contratos" style="display:none;background:#c0392b;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px">!</span></div>
+      <div class="nav-item" onclick="showPage('financeiro',this)"><i class="ti ti-building-bank"></i> Núcleo Financeiro</div>
+      <div class="nav-item" onclick="showPage('contratos',this)"><i class="ti ti-file-contract"></i> 📋 Núcleo de Contratos <span id="badge-contratos" style="display:none;background:#c0392b;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px">!</span></div>
       <div class="nav-item" id="nav-usuarios" style="display:none" onclick="showPage('usuarios',this)"><i class="ti ti-users"></i> Usuários</div>
     </div>
     <div class="content">
@@ -347,12 +347,24 @@ tr:hover td{background:#f8fafc}
       <!-- UNIDADE FINANCEIRA -->
       <div id="page-financeiro" class="page">
         <div class="section-header">
-          <span class="section-title">Unidade Financeira</span>
+          <span class="section-title">🏦 Núcleo Financeiro</span>
           <button class="btn-primary" onclick="abrirModalConta()"><i class="ti ti-plus"></i> Nova conta</button>
         </div>
 
-        <!-- Cards resumo -->
-        <div class="metrics" id="fin-metrics" style="grid-template-columns:repeat(4,1fr)"></div>
+        <!-- Dashboard Núcleo Financeiro -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px" id="fin-metrics"></div>
+
+        <!-- Gráficos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+          <div class="card" style="padding:16px">
+            <div class="sec-label">Distribuição por Eixo</div>
+            <canvas id="fin-chart-eixo" style="max-height:200px"></canvas>
+          </div>
+          <div class="card" style="padding:16px">
+            <div class="sec-label">Execução por Ano de Repasse</div>
+            <canvas id="fin-chart-ano" style="max-height:200px"></canvas>
+          </div>
+        </div>
 
         <!-- Abas internas -->
         <div style="display:flex;gap:0;border-bottom:2px solid #e0e0e0;margin-bottom:18px">
@@ -414,7 +426,7 @@ tr:hover td{background:#f8fafc}
       <!-- UNIDADE DE CONTRATOS E CONVÊNIOS -->
       <div id="page-contratos" class="page">
         <div class="section-header">
-          <span class="section-title">Unidade de Contratos e Convênios</span>
+          <span class="section-title">📋 Núcleo de Contratos e Convênios</span>
           <div style="display:flex;gap:8px">
             <button class="btn-secondary" onclick="exportarContratosExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
             <button class="btn-secondary" onclick="exportarContratosPDF()"><i class="ti ti-file-type-pdf"></i> PDF</button>
@@ -432,6 +444,30 @@ tr:hover td{background:#f8fafc}
 
         <!-- Cards métricas -->
         <div class="metrics" id="cont-metrics" style="grid-template-columns:repeat(5,1fr);margin-bottom:18px"></div>
+
+        <!-- Gráficos dashboard contratos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:18px">
+          <div class="card" style="padding:16px">
+            <div class="sec-label">Status dos contratos</div>
+            <canvas id="cont-chart-status" style="max-height:180px"></canvas>
+          </div>
+          <div class="card" style="padding:16px">
+            <div class="sec-label">Por órgão</div>
+            <canvas id="cont-chart-orgao" style="max-height:180px"></canvas>
+          </div>
+          <div class="card" style="padding:16px">
+            <div class="sec-label">Por tipo</div>
+            <canvas id="cont-chart-tipo" style="max-height:180px"></canvas>
+          </div>
+        </div>
+
+        <!-- Alertas vencimento próximo -->
+        <div id="cont-venc-wrap" style="display:none;margin-bottom:16px">
+          <div class="card" style="padding:14px;border-left:4px solid #c0392b">
+            <div style="font-size:12px;font-weight:700;color:#c0392b;margin-bottom:10px"><i class="ti ti-calendar-exclamation"></i> Vencendo nos próximos 30 dias</div>
+            <div id="cont-venc-lista"></div>
+          </div>
+        </div>
 
         <!-- Filtros -->
         <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -471,7 +507,134 @@ tr:hover td{background:#f8fafc}
         </div>
       </div>
 
-      <!-- MODAL CONTRATO -->
+
+      <!-- FLUXOGRAMA -->
+      <div id="page-fluxograma" class="page">
+        <div class="section-header">
+          <span class="section-title">Fluxograma de Processos</span>
+          <span style="font-size:12px;color:#888">Fluxo padrão de tramitação — FUNSEP/SEJUSP</span>
+        </div>
+        <div id="fluxograma-container"></div>
+      </div>
+
+      <!-- USUÁRIOS (só Gestores) -->
+      <div id="page-usuarios" class="page">
+        <div class="section-header">
+          <span class="section-title">Usuários do sistema</span>
+        </div>
+        <div class="card" style="padding:0">
+          <table>
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Cadastrado em</th></tr></thead>
+            <tbody id="user-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONTA -->
+<div class="modal-overlay" id="m-conta">
+        <div class="modal-box" style="width:560px">
+          <div class="modal-header">
+            <div><div class="modal-title" id="m-conta-title">Nova conta</div><div class="modal-sub">Cadastre uma conta orçamentária do FUNSEP</div></div>
+            <button class="modal-close" onclick="fecharModal('m-conta')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="conta-edit-id">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="form-group full"><label>Número da conta</label><input type="text" id="conta-numero" class="form-input" placeholder="Ex: 2023NE00001"></div>
+              <div class="form-group"><label>Ano de repasse</label>
+                <select id="conta-ano" class="form-input">
+                  <option value="">Selecione...</option>
+                  <option>2019</option><option>2020</option><option>2021</option><option>2022</option>
+                  <option>2023</option><option>2024</option><option>2025</option><option>2026</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Natureza de Despesa (ND)</label>
+                <select id="conta-nd" class="form-input">
+                  <option value="">Selecione...</option>
+                  <option value="3">3 — Serviços de Terceiros</option>
+                  <option value="4">4 — Equipamentos e Material Permanente</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Eixo</label>
+                <select id="conta-eixo" class="form-input">
+                  <option value="">Selecione...</option>
+                  <option>EVC</option><option>VPSP</option><option>FISP</option>
+                  <option>PNSE</option><option>MQVPSP</option><option>RMV</option><option>EVM</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>Ação</label><input type="text" id="conta-acao" class="form-input" placeholder="Ex: Aquisição de armamento"></div>
+              <div class="form-group"><label>Saldo inicial (R$)</label><input type="number" step="0.01" id="conta-saldo-inicial" class="form-input" placeholder="0,00" oninput="previewSaldo()"></div>
+              <div class="form-group"><label>Saldo em conta (R$)</label><input type="number" step="0.01" id="conta-saldo-conta" class="form-input" placeholder="0,00"></div>
+            </div>
+            <!-- Preview -->
+            <div id="conta-preview" style="display:none;margin-top:12px;background:#f0f9f4;border-radius:8px;padding:12px 14px;font-size:12px;color:#0a6640">
+              <i class="ti ti-info-circle"></i> Saldo a Utilizar = Saldo Inicial − Empenhos cadastrados
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-conta')">Cancelar</button>
+            <button class="btn-primary" onclick="salvarConta()"><i class="ti ti-device-floppy"></i> Salvar</button>
+          </div>
+        </div>
+      </div>
+
+<!-- MODAL EMPENHO -->
+<div class="modal-overlay" id="m-empenho-fin">
+        <div class="modal-box" style="width:580px">
+          <div class="modal-header">
+            <div><div class="modal-title" id="m-emp-fin-title">Novo empenho</div><div class="modal-sub">Cadastre um empenho e vincule à conta correspondente</div></div>
+            <button class="modal-close" onclick="fecharModal('m-empenho-fin')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="emp-fin-edit-id">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="form-group"><label>Número do empenho</label><input type="text" id="emp-fin-numero" class="form-input" placeholder="Ex: 2024NE00123"></div>
+              <div class="form-group"><label>Data do empenho</label><input type="date" id="emp-fin-data" class="form-input"></div>
+              <div class="form-group full"><label>Processo SIGA vinculado</label>
+                <select id="emp-fin-processo" class="form-input" onchange="preencherCamposProcesso()">
+                  <option value="">Selecionar processo...</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>Conta orçamentária</label>
+                <select id="emp-fin-conta" class="form-input" onchange="atualizarInfoConta()">
+                  <option value="">Selecionar conta...</option>
+                </select>
+              </div>
+              <!-- Info da conta selecionada -->
+              <div class="form-group full" id="emp-info-conta" style="display:none">
+                <div style="background:#f0f4f8;border-radius:8px;padding:10px 14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                  <div><div style="color:#888;font-size:10px;font-weight:700">EIXO</div><div id="emp-info-eixo" style="font-weight:600"></div></div>
+                  <div><div style="color:#888;font-size:10px;font-weight:700">ND</div><div id="emp-info-nd" style="font-weight:600"></div></div>
+                  <div><div style="color:#888;font-size:10px;font-weight:700">SALDO DISPONÍVEL</div><div id="emp-info-saldo" style="font-weight:700;color:#0a6640"></div></div>
+                </div>
+              </div>
+              <div class="form-group"><label>Valor do empenho (R$)</label><input type="number" step="0.01" id="emp-fin-valor" class="form-input" placeholder="0,00" oninput="validarSaldoEmpenho()"></div>
+              <div class="form-group"><label>Situação</label>
+                <select id="emp-fin-situacao" class="form-input">
+                  <option value="ativo">Ativo</option>
+                  <option value="anulado">Anulado</option>
+                  <option value="liquidado">Liquidado</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>Observação</label><input type="text" id="emp-fin-obs" class="form-input" placeholder="Opcional"></div>
+            </div>
+            <div id="emp-alerta-saldo" style="display:none;margin-top:10px;background:#fee2e2;border-radius:8px;padding:10px 14px;font-size:12px;color:#be123c">
+              <i class="ti ti-alert-triangle"></i> Valor excede o saldo disponível desta conta!
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-empenho-fin')">Cancelar</button>
+            <button class="btn-primary" onclick="salvarEmpenhoFin()"><i class="ti ti-device-floppy"></i> Registrar empenho</button>
+          </div>
+        </div>
+      </div>
+
+
+<!-- MODAL CONTRATO -->
       <div class="modal-overlay" id="m-contrato">
         <div class="modal-box" style="width:700px;max-height:92vh">
           <div class="modal-header">
@@ -597,131 +760,6 @@ tr:hover td{background:#f8fafc}
           <div class="modal-body" id="m-cont-det-body"></div>
           <div class="modal-footer">
             <button class="btn-secondary" onclick="fecharModal('m-cont-detalhe')">Fechar</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- FLUXOGRAMA -->
-      <div id="page-fluxograma" class="page">
-        <div class="section-header">
-          <span class="section-title">Fluxograma de Processos</span>
-          <span style="font-size:12px;color:#888">Fluxo padrão de tramitação — FUNSEP/SEJUSP</span>
-        </div>
-        <div id="fluxograma-container"></div>
-      </div>
-
-      <!-- USUÁRIOS (só Gestores) -->
-      <div id="page-usuarios" class="page">
-        <div class="section-header">
-          <span class="section-title">Usuários do sistema</span>
-        </div>
-        <div class="card" style="padding:0">
-          <table>
-            <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Cadastrado em</th></tr></thead>
-            <tbody id="user-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<!-- MODAL CONTA -->
-<div class="modal-overlay" id="m-conta">
-        <div class="modal-box" style="width:560px">
-          <div class="modal-header">
-            <div><div class="modal-title" id="m-conta-title">Nova conta</div><div class="modal-sub">Cadastre uma conta orçamentária do FUNSEP</div></div>
-            <button class="modal-close" onclick="fecharModal('m-conta')"><i class="ti ti-x"></i></button>
-          </div>
-          <div class="modal-body">
-            <input type="hidden" id="conta-edit-id">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-              <div class="form-group full"><label>Número da conta</label><input type="text" id="conta-numero" class="form-input" placeholder="Ex: 2023NE00001"></div>
-              <div class="form-group"><label>Ano de repasse</label>
-                <select id="conta-ano" class="form-input">
-                  <option value="">Selecione...</option>
-                  <option>2019</option><option>2020</option><option>2021</option><option>2022</option>
-                  <option>2023</option><option>2024</option><option>2025</option><option>2026</option>
-                </select>
-              </div>
-              <div class="form-group"><label>Natureza de Despesa (ND)</label>
-                <select id="conta-nd" class="form-input">
-                  <option value="">Selecione...</option>
-                  <option value="3">3 — Serviços de Terceiros</option>
-                  <option value="4">4 — Equipamentos e Material Permanente</option>
-                </select>
-              </div>
-              <div class="form-group"><label>Eixo</label>
-                <select id="conta-eixo" class="form-input">
-                  <option value="">Selecione...</option>
-                  <option>EVC</option><option>VPSP</option><option>FISP</option>
-                  <option>PNSE</option><option>MQVPSP</option><option>RMV</option><option>EVM</option>
-                </select>
-              </div>
-              <div class="form-group full"><label>Ação</label><input type="text" id="conta-acao" class="form-input" placeholder="Ex: Aquisição de armamento"></div>
-              <div class="form-group"><label>Saldo inicial (R$)</label><input type="number" step="0.01" id="conta-saldo-inicial" class="form-input" placeholder="0,00" oninput="previewSaldo()"></div>
-              <div class="form-group"><label>Saldo em conta (R$)</label><input type="number" step="0.01" id="conta-saldo-conta" class="form-input" placeholder="0,00"></div>
-            </div>
-            <!-- Preview -->
-            <div id="conta-preview" style="display:none;margin-top:12px;background:#f0f9f4;border-radius:8px;padding:12px 14px;font-size:12px;color:#0a6640">
-              <i class="ti ti-info-circle"></i> Saldo a Utilizar = Saldo Inicial − Empenhos cadastrados
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn-secondary" onclick="fecharModal('m-conta')">Cancelar</button>
-            <button class="btn-primary" onclick="salvarConta()"><i class="ti ti-device-floppy"></i> Salvar</button>
-          </div>
-        </div>
-      </div>
-
-<!-- MODAL EMPENHO -->
-<div class="modal-overlay" id="m-empenho-fin">
-        <div class="modal-box" style="width:580px">
-          <div class="modal-header">
-            <div><div class="modal-title" id="m-emp-fin-title">Novo empenho</div><div class="modal-sub">Cadastre um empenho e vincule à conta correspondente</div></div>
-            <button class="modal-close" onclick="fecharModal('m-empenho-fin')"><i class="ti ti-x"></i></button>
-          </div>
-          <div class="modal-body">
-            <input type="hidden" id="emp-fin-edit-id">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-              <div class="form-group"><label>Número do empenho</label><input type="text" id="emp-fin-numero" class="form-input" placeholder="Ex: 2024NE00123"></div>
-              <div class="form-group"><label>Data do empenho</label><input type="date" id="emp-fin-data" class="form-input"></div>
-              <div class="form-group full"><label>Processo SIGA vinculado</label>
-                <select id="emp-fin-processo" class="form-input" onchange="preencherCamposProcesso()">
-                  <option value="">Selecionar processo...</option>
-                </select>
-              </div>
-              <div class="form-group full"><label>Conta orçamentária</label>
-                <select id="emp-fin-conta" class="form-input" onchange="atualizarInfoConta()">
-                  <option value="">Selecionar conta...</option>
-                </select>
-              </div>
-              <!-- Info da conta selecionada -->
-              <div class="form-group full" id="emp-info-conta" style="display:none">
-                <div style="background:#f0f4f8;border-radius:8px;padding:10px 14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-                  <div><div style="color:#888;font-size:10px;font-weight:700">EIXO</div><div id="emp-info-eixo" style="font-weight:600"></div></div>
-                  <div><div style="color:#888;font-size:10px;font-weight:700">ND</div><div id="emp-info-nd" style="font-weight:600"></div></div>
-                  <div><div style="color:#888;font-size:10px;font-weight:700">SALDO DISPONÍVEL</div><div id="emp-info-saldo" style="font-weight:700;color:#0a6640"></div></div>
-                </div>
-              </div>
-              <div class="form-group"><label>Valor do empenho (R$)</label><input type="number" step="0.01" id="emp-fin-valor" class="form-input" placeholder="0,00" oninput="validarSaldoEmpenho()"></div>
-              <div class="form-group"><label>Situação</label>
-                <select id="emp-fin-situacao" class="form-input">
-                  <option value="ativo">Ativo</option>
-                  <option value="anulado">Anulado</option>
-                  <option value="liquidado">Liquidado</option>
-                </select>
-              </div>
-              <div class="form-group full"><label>Observação</label><input type="text" id="emp-fin-obs" class="form-input" placeholder="Opcional"></div>
-            </div>
-            <div id="emp-alerta-saldo" style="display:none;margin-top:10px;background:#fee2e2;border-radius:8px;padding:10px 14px;font-size:12px;color:#be123c">
-              <i class="ti ti-alert-triangle"></i> Valor excede o saldo disponível desta conta!
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn-secondary" onclick="fecharModal('m-empenho-fin')">Cancelar</button>
-            <button class="btn-primary" onclick="salvarEmpenhoFin()"><i class="ti ti-device-floppy"></i> Registrar empenho</button>
           </div>
         </div>
       </div>
@@ -2538,6 +2576,178 @@ function exportarContratosPDF() {
   setTimeout(function(){ win.print(); }, 800);
   showToast('Relatório PDF gerado com '+lista.length+' contratos!');
 }
+
+// ════════════════════════════════════════════════
+// DASHBOARDS — NÚCLEO FINANCEIRO E NÚCLEO DE CONTRATOS
+// ════════════════════════════════════════════════
+var chartFinEixo = null, chartFinAno = null;
+var chartContStatus = null, chartContOrgao = null, chartContTipo = null;
+
+// ── DASHBOARD NÚCLEO FINANCEIRO ──
+function renderDashboardFinanceiro() {
+  var EIXO_CORES = {
+    ECV:'#1a3a5c', VPS:'#0a6640', VPSP:'#7c3aed', FISP:'#b45309',
+    PNSE:'#be123c', MQVPSP:'#0e7490', RMV:'#c2410c', EVM:'#9d174d', DETRAN:'#374151'
+  };
+
+  // Agrupar por eixo
+  var porEixo = {};
+  CONTAS_FIN.forEach(function(c){
+    var emp = calcularSaldoUtilizar(c.id);
+    var disp = parseFloat(c.saldo_conta||0) - emp;
+    if (!porEixo[c.eixo]) porEixo[c.eixo] = {saldo:0, emp:0, disp:0};
+    porEixo[c.eixo].saldo += parseFloat(c.saldo_conta||0);
+    porEixo[c.eixo].emp   += emp;
+    porEixo[c.eixo].disp  += disp;
+  });
+
+  // Gráfico por eixo (barras empilhadas)
+  var ctxE = document.getElementById('fin-chart-eixo');
+  if (ctxE) {
+    if (chartFinEixo) chartFinEixo.destroy();
+    var eixos = Object.keys(porEixo);
+    chartFinEixo = new Chart(ctxE, {
+      type: 'bar',
+      data: {
+        labels: eixos,
+        datasets: [
+          { label:'Empenhado', data: eixos.map(function(e){return porEixo[e].emp;}), backgroundColor:'#ef4444', borderRadius:4 },
+          { label:'Disponível', data: eixos.map(function(e){return Math.max(0,porEixo[e].disp);}), backgroundColor:'#22c55e', borderRadius:4 }
+        ]
+      },
+      options: {
+        plugins:{ legend:{ position:'bottom', labels:{font:{size:10},boxWidth:10,padding:6} } },
+        scales:{
+          x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10}} },
+          y:{ stacked:true, grid:{color:'#f0f0f0'}, ticks:{callback:function(v){return 'R$'+Number(v/1000).toFixed(0)+'k';}, font:{size:9}} }
+        }
+      }
+    });
+  }
+
+  // Agrupar por ano
+  var porAno = {};
+  CONTAS_FIN.forEach(function(c){
+    var a = String(c.ano_repasse);
+    var emp = calcularSaldoUtilizar(c.id);
+    var disp = Math.max(0, parseFloat(c.saldo_conta||0) - emp);
+    if (!porAno[a]) porAno[a] = {emp:0, disp:0};
+    porAno[a].emp  += emp;
+    porAno[a].disp += disp;
+  });
+
+  var ctxA = document.getElementById('fin-chart-ano');
+  if (ctxA) {
+    if (chartFinAno) chartFinAno.destroy();
+    var anos = Object.keys(porAno).sort();
+    chartFinAno = new Chart(ctxA, {
+      type:'bar',
+      data:{
+        labels:anos,
+        datasets:[
+          { label:'Empenhado', data:anos.map(function(a){return porAno[a].emp;}), backgroundColor:'#f59e0b', borderRadius:4 },
+          { label:'Disponível', data:anos.map(function(a){return porAno[a].disp;}), backgroundColor:'#3b82f6', borderRadius:4 }
+        ]
+      },
+      options:{
+        plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:6}}},
+        scales:{
+          x:{stacked:false,grid:{display:false},ticks:{font:{size:10}}},
+          y:{grid:{color:'#f0f0f0'},ticks:{callback:function(v){return 'R$'+Number(v/1000000).toFixed(1)+'M';},font:{size:9}}}
+        }
+      }
+    });
+  }
+}
+
+// ── DASHBOARD NÚCLEO DE CONTRATOS ──
+function renderDashboardContratos() {
+  // Gráfico status (rosca)
+  var ctxS = document.getElementById('cont-chart-status');
+  if (ctxS && CONTRATOS.length) {
+    if (chartContStatus) chartContStatus.destroy();
+    var vig  = CONTRATOS.filter(function(c){return c.status==='vigente';}).length;
+    var renov= CONTRATOS.filter(function(c){return c.status==='em_renovacao';}).length;
+    var enc  = CONTRATOS.filter(function(c){return c.status==='encerrado';}).length;
+    var resc = CONTRATOS.filter(function(c){return c.status==='rescindido';}).length;
+    chartContStatus = new Chart(ctxS, {
+      type:'doughnut',
+      data:{ labels:['Vigente','Em renovação','Encerrado','Rescindido'],
+        datasets:[{data:[vig,renov,enc,resc], backgroundColor:['#22c55e','#f59e0b','#9ca3af','#ef4444'], borderWidth:2, borderColor:'#fff'}]
+      },
+      options:{plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:6}}},cutout:'60%'}
+    });
+  }
+
+  // Gráfico por órgão (barras)
+  var ctxO = document.getElementById('cont-chart-orgao');
+  if (ctxO && CONTRATOS.length) {
+    if (chartContOrgao) chartContOrgao.destroy();
+    var orgaos = {};
+    CONTRATOS.forEach(function(c){ orgaos[c.orgao]=(orgaos[c.orgao]||0)+1; });
+    chartContOrgao = new Chart(ctxO, {
+      type:'bar',
+      data:{ labels:Object.keys(orgaos),
+        datasets:[{label:'Contratos', data:Object.values(orgaos),
+          backgroundColor:['#1a3a5c','#0a6640','#7c3aed'], borderRadius:6}]
+      },
+      options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'#f0f0f0'}}}}
+    });
+  }
+
+  // Gráfico por tipo (pizza)
+  var ctxT = document.getElementById('cont-chart-tipo');
+  if (ctxT && CONTRATOS.length) {
+    if (chartContTipo) chartContTipo.destroy();
+    var serv = CONTRATOS.filter(function(c){return c.tipo==='servico';}).length;
+    var aqui = CONTRATOS.filter(function(c){return c.tipo==='aquisicao';}).length;
+    chartContTipo = new Chart(ctxT, {
+      type:'pie',
+      data:{ labels:['Serviço','Aquisição'],
+        datasets:[{data:[serv,aqui], backgroundColor:['#3b82f6','#f59e0b'], borderWidth:2, borderColor:'#fff'}]
+      },
+      options:{plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:6}}}}
+    });
+  }
+
+  // Vencimentos próximos (30 dias)
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var em30 = new Date(hoje.getTime()+30*864e5);
+  var venc30 = CONTRATOS.filter(function(c){
+    if (!c.vigencia_fim||c.status==='encerrado'||c.status==='rescindido') return false;
+    var d = new Date(c.vigencia_fim+'T12:00:00');
+    return d >= hoje && d <= em30;
+  });
+
+  var wrap  = document.getElementById('cont-venc-wrap');
+  var lista = document.getElementById('cont-venc-lista');
+  if (wrap) wrap.style.display = venc30.length ? 'block':'none';
+  if (lista && venc30.length) {
+    lista.innerHTML = venc30.map(function(c){
+      var d = diasRestantes(c.vigencia_fim);
+      return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #fee2e2;font-size:12px">'+
+        '<span style="background:'+(c.orgao==='SEJUSP'?'#dbeafe':'#d1fae5')+';color:'+(c.orgao==='SEJUSP'?'#1e40af':'#065f46')+';padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700">'+c.orgao+'</span>'+
+        '<strong style="flex:1">'+(c.numero||'—')+'</strong>'+
+        '<span style="color:#555">'+(c.empresa||'').substring(0,30)+'</span>'+
+        '<span style="color:#c0392b;font-weight:700;white-space:nowrap"><i class="ti ti-clock"></i> '+d+' dias</span>'+
+      '</div>';
+    }).join('');
+  }
+}
+
+// Sobrescrever renderFinanceiro para incluir dashboard
+var _renderFinanceiroOrig = renderFinanceiro;
+renderFinanceiro = async function() {
+  await _renderFinanceiroOrig();
+  renderDashboardFinanceiro();
+};
+
+// Sobrescrever renderContratos para incluir dashboard
+var _renderContratosOrig = renderContratos;
+renderContratos = async function() {
+  await _renderContratosOrig();
+  renderDashboardContratos();
+};
 
 verificarSessao();
 </script>
