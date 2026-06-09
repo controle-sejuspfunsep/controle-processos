@@ -170,6 +170,7 @@ tr:hover td{background:#f8fafc}
       <div class="nav-item" onclick="showPage('processos',this)"><i class="ti ti-files"></i> Processos</div>
       <div class="nav-item" onclick="showPage('novo',this);resetForm()"><i class="ti ti-plus"></i> Novo Processo</div>
       <div class="nav-item" onclick="showPage('fluxograma',this)"><i class="ti ti-git-branch"></i> Fluxograma</div>
+      <div class="nav-item" onclick="showPage('financeiro',this)"><i class="ti ti-building-bank"></i> Unidade Financeira</div>
       <div class="nav-item" id="nav-usuarios" style="display:none" onclick="showPage('usuarios',this)"><i class="ti ti-users"></i> Usuários</div>
     </div>
     <div class="content">
@@ -325,6 +326,172 @@ tr:hover td{background:#f8fafc}
           <div class="form-actions" style="margin-top:20px">
             <button class="btn-secondary" onclick="resetForm()">Limpar</button>
             <button class="btn-primary" onclick="salvarProcesso()"><i class="ti ti-device-floppy"></i> Salvar Processo</button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- UNIDADE FINANCEIRA -->
+      <div id="page-financeiro" class="page">
+        <div class="section-header">
+          <span class="section-title">Unidade Financeira</span>
+          <button class="btn-primary" onclick="abrirModalConta()"><i class="ti ti-plus"></i> Nova conta</button>
+        </div>
+
+        <!-- Cards resumo -->
+        <div class="metrics" id="fin-metrics" style="grid-template-columns:repeat(4,1fr)"></div>
+
+        <!-- Abas internas -->
+        <div style="display:flex;gap:0;border-bottom:2px solid #e0e0e0;margin-bottom:18px">
+          <button id="fin-tab-contas" onclick="finTab('contas')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;color:#1a3a5c;border-bottom:3px solid #1a3a5c;cursor:pointer;margin-bottom:-2px">Contas</button>
+          <button id="fin-tab-empenhos" onclick="finTab('empenhos')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Empenhos</button>
+        </div>
+
+        <!-- CONTAS -->
+        <div id="fin-painel-contas">
+          <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+            <input type="text" id="fin-busca-conta" placeholder="Buscar conta..." class="filter-bar" style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:220px" oninput="renderContas()">
+            <select id="fin-filtro-eixo" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderContas()">
+              <option value="">Todos os eixos</option>
+              <option>EVC</option><option>VPSP</option><option>FISP</option>
+              <option>PNSE</option><option>MQVPSP</option><option>RMV</option><option>EVM</option>
+            </select>
+            <select id="fin-filtro-ano" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderContas()">
+              <option value="">Todos os anos</option>
+            </select>
+          </div>
+          <div class="card" style="padding:0">
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Nº Conta</th><th>Ano Repasse</th><th>ND</th><th>Eixo</th><th>Ação</th>
+                  <th style="text-align:right">Saldo Inicial</th>
+                  <th style="text-align:right">Empenhado</th>
+                  <th style="text-align:right">Saldo a Utilizar</th>
+                  <th style="text-align:center">Situação</th>
+                  <th></th>
+                </tr></thead>
+                <tbody id="tb-contas-fin"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMPENHOS -->
+        <div id="fin-painel-empenhos" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <input type="text" id="fin-busca-emp" placeholder="Buscar empenho..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:260px" oninput="renderEmpenhos()">
+            <button class="btn-primary" onclick="abrirModalEmpenho()"><i class="ti ti-plus"></i> Novo empenho</button>
+          </div>
+          <div class="card" style="padding:0">
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Nº Empenho</th><th>Processo SIGA</th><th>Conta</th><th>Eixo</th><th>ND</th>
+                  <th style="text-align:right">Valor</th><th>Data</th><th>Situação</th><th></th>
+                </tr></thead>
+                <tbody id="tb-empenhos-fin"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL CONTA -->
+      <div class="modal-overlay" id="m-conta">
+        <div class="modal-box" style="width:560px">
+          <div class="modal-header">
+            <div><div class="modal-title" id="m-conta-title">Nova conta</div><div class="modal-sub">Cadastre uma conta orçamentária do FUNSEP</div></div>
+            <button class="modal-close" onclick="fecharModal('m-conta')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="conta-edit-id">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="form-group full"><label>Número da conta</label><input type="text" id="conta-numero" class="form-input" placeholder="Ex: 2023NE00001"></div>
+              <div class="form-group"><label>Ano de repasse</label>
+                <select id="conta-ano" class="form-input">
+                  <option value="">Selecione...</option>
+                  <option>2019</option><option>2020</option><option>2021</option><option>2022</option>
+                  <option>2023</option><option>2024</option><option>2025</option><option>2026</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Natureza de Despesa (ND)</label>
+                <select id="conta-nd" class="form-input">
+                  <option value="">Selecione...</option>
+                  <option value="3">3 — Serviços de Terceiros</option>
+                  <option value="4">4 — Equipamentos e Material Permanente</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Eixo</label>
+                <select id="conta-eixo" class="form-input">
+                  <option value="">Selecione...</option>
+                  <option>EVC</option><option>VPSP</option><option>FISP</option>
+                  <option>PNSE</option><option>MQVPSP</option><option>RMV</option><option>EVM</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>Ação</label><input type="text" id="conta-acao" class="form-input" placeholder="Ex: Aquisição de armamento"></div>
+              <div class="form-group"><label>Saldo inicial (R$)</label><input type="number" step="0.01" id="conta-saldo-inicial" class="form-input" placeholder="0,00" oninput="previewSaldo()"></div>
+              <div class="form-group"><label>Saldo em conta (R$)</label><input type="number" step="0.01" id="conta-saldo-conta" class="form-input" placeholder="0,00"></div>
+            </div>
+            <!-- Preview -->
+            <div id="conta-preview" style="display:none;margin-top:12px;background:#f0f9f4;border-radius:8px;padding:12px 14px;font-size:12px;color:#0a6640">
+              <i class="ti ti-info-circle"></i> Saldo a Utilizar = Saldo Inicial − Empenhos cadastrados
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-conta')">Cancelar</button>
+            <button class="btn-primary" onclick="salvarConta()"><i class="ti ti-device-floppy"></i> Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL EMPENHO -->
+      <div class="modal-overlay" id="m-empenho-fin">
+        <div class="modal-box" style="width:580px">
+          <div class="modal-header">
+            <div><div class="modal-title" id="m-emp-fin-title">Novo empenho</div><div class="modal-sub">Cadastre um empenho e vincule à conta correspondente</div></div>
+            <button class="modal-close" onclick="fecharModal('m-empenho-fin')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="emp-fin-edit-id">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="form-group"><label>Número do empenho</label><input type="text" id="emp-fin-numero" class="form-input" placeholder="Ex: 2024NE00123"></div>
+              <div class="form-group"><label>Data do empenho</label><input type="date" id="emp-fin-data" class="form-input"></div>
+              <div class="form-group full"><label>Processo SIGA vinculado</label>
+                <select id="emp-fin-processo" class="form-input" onchange="preencherCamposProcesso()">
+                  <option value="">Selecionar processo...</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>Conta orçamentária</label>
+                <select id="emp-fin-conta" class="form-input" onchange="atualizarInfoConta()">
+                  <option value="">Selecionar conta...</option>
+                </select>
+              </div>
+              <!-- Info da conta selecionada -->
+              <div class="form-group full" id="emp-info-conta" style="display:none">
+                <div style="background:#f0f4f8;border-radius:8px;padding:10px 14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                  <div><div style="color:#888;font-size:10px;font-weight:700">EIXO</div><div id="emp-info-eixo" style="font-weight:600"></div></div>
+                  <div><div style="color:#888;font-size:10px;font-weight:700">ND</div><div id="emp-info-nd" style="font-weight:600"></div></div>
+                  <div><div style="color:#888;font-size:10px;font-weight:700">SALDO DISPONÍVEL</div><div id="emp-info-saldo" style="font-weight:700;color:#0a6640"></div></div>
+                </div>
+              </div>
+              <div class="form-group"><label>Valor do empenho (R$)</label><input type="number" step="0.01" id="emp-fin-valor" class="form-input" placeholder="0,00" oninput="validarSaldoEmpenho()"></div>
+              <div class="form-group"><label>Situação</label>
+                <select id="emp-fin-situacao" class="form-input">
+                  <option value="ativo">Ativo</option>
+                  <option value="anulado">Anulado</option>
+                  <option value="liquidado">Liquidado</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>Observação</label><input type="text" id="emp-fin-obs" class="form-input" placeholder="Opcional"></div>
+            </div>
+            <div id="emp-alerta-saldo" style="display:none;margin-top:10px;background:#fee2e2;border-radius:8px;padding:10px 14px;font-size:12px;color:#be123c">
+              <i class="ti ti-alert-triangle"></i> Valor excede o saldo disponível desta conta!
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-empenho-fin')">Cancelar</button>
+            <button class="btn-primary" onclick="salvarEmpenhoFin()"><i class="ti ti-device-floppy"></i> Registrar empenho</button>
           </div>
         </div>
       </div>
@@ -670,6 +837,7 @@ function showPage(id, el) {
   if (id==='processos') renderTable();
   if (id==='usuarios')  carregarUsuarios();
   if (id==='fluxograma') renderFluxograma();
+  if (id==='financeiro') renderFinanceiro();
 }
 
 function selectOrgao(o) {
@@ -1264,6 +1432,363 @@ function selecionarEtapa(id) {
   // Scroll suave para o topo do container
   var el = document.getElementById('fluxograma-container');
   if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// ════════════════════════════════════════════════
+// UNIDADE FINANCEIRA
+// ════════════════════════════════════════════════
+var CONTAS_FIN = [];
+var EMPENHOS_FIN = [];
+var finAbaAtiva = 'contas';
+
+var ND_LABELS = { '3':'3 — Serviços de Terceiros', '4':'4 — Equipamentos e Material Permanente' };
+
+// ── CARREGAMENTO ──
+async function carregarFinanceiro() {
+  if (!sb) return;
+  try {
+    var rc = await sb.from('fin_contas').select('*').order('ano_repasse').order('eixo');
+    if (!rc.error) CONTAS_FIN = rc.data || [];
+    var re = await sb.from('fin_empenhos').select('*').order('created_at', {ascending:false});
+    if (!re.error) EMPENHOS_FIN = re.data || [];
+  } catch(e) { console.warn('Erro ao carregar financeiro:', e); }
+}
+
+// ── ABAS ──
+function finTab(aba) {
+  finAbaAtiva = aba;
+  document.getElementById('fin-painel-contas').style.display   = aba==='contas'   ? 'block' : 'none';
+  document.getElementById('fin-painel-empenhos').style.display = aba==='empenhos' ? 'block' : 'none';
+  var btnC = document.getElementById('fin-tab-contas');
+  var btnE = document.getElementById('fin-tab-empenhos');
+  if (btnC) { btnC.style.color = aba==='contas'?'#1a3a5c':'#888'; btnC.style.borderBottom = aba==='contas'?'3px solid #1a3a5c':'none'; }
+  if (btnE) { btnE.style.color = aba==='empenhos'?'#1a3a5c':'#888'; btnE.style.borderBottom = aba==='empenhos'?'3px solid #1a3a5c':'none'; }
+  if (aba==='contas') renderContas();
+  else renderEmpenhos();
+}
+
+// ── CALCULAR SALDO ──
+function calcularSaldoUtilizar(contaId) {
+  var totalEmp = EMPENHOS_FIN
+    .filter(function(e){ return e.conta_id === contaId && e.situacao !== 'anulado'; })
+    .reduce(function(s,e){ return s + parseFloat(e.valor||0); }, 0);
+  return totalEmp;
+}
+
+function fmtMoeda(v) {
+  return 'R$ ' + parseFloat(v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ── RENDER FINANCEIRO (metrics + contas) ──
+async function renderFinanceiro() {
+  await carregarFinanceiro();
+  renderMetricsFinanceiro();
+  renderContas();
+  popularFiltroAno();
+}
+
+function popularFiltroAno() {
+  var sel = document.getElementById('fin-filtro-ano');
+  if (!sel) return;
+  var anos = {};
+  CONTAS_FIN.forEach(function(c){ if(c.ano_repasse) anos[c.ano_repasse]=true; });
+  sel.innerHTML = '<option value="">Todos os anos</option>';
+  Object.keys(anos).sort().forEach(function(a){ sel.innerHTML += '<option value="'+a+'">'+a+'</option>'; });
+}
+
+function renderMetricsFinanceiro() {
+  var totalInicial = CONTAS_FIN.reduce(function(s,c){ return s+parseFloat(c.saldo_inicial||0); },0);
+  var totalEmp     = CONTAS_FIN.reduce(function(s,c){ return s+calcularSaldoUtilizar(c.id); },0);
+  var totalDisp    = totalInicial - totalEmp;
+  var pctEmp       = totalInicial>0 ? (totalEmp/totalInicial*100).toFixed(1) : 0;
+  var el = document.getElementById('fin-metrics');
+  if (!el) return;
+  el.innerHTML =
+    '<div class="metric"><div class="metric-val" style="font-size:18px">'+fmtMoeda(totalInicial)+'</div><div class="metric-lbl">Saldo Inicial Total</div></div>'+
+    '<div class="metric"><div class="metric-val" style="font-size:18px;color:#c0392b">'+fmtMoeda(totalEmp)+'</div><div class="metric-lbl">Total Empenhado</div></div>'+
+    '<div class="metric"><div class="metric-val" style="font-size:18px;color:#0a6640">'+fmtMoeda(totalDisp)+'</div><div class="metric-lbl">Saldo a Utilizar</div></div>'+
+    '<div class="metric"><div class="metric-val" style="color:'+(pctEmp>80?'#c0392b':pctEmp>50?'#b45309':'#0a6640')+'">'+pctEmp+'%</div><div class="metric-lbl">Executado</div></div>';
+}
+
+function renderContas() {
+  var busca   = (document.getElementById('fin-busca-conta')||{value:''}).value.toLowerCase();
+  var filtEixo = (document.getElementById('fin-filtro-eixo')||{value:''}).value;
+  var filtAno  = (document.getElementById('fin-filtro-ano')||{value:''}).value;
+
+  var lista = CONTAS_FIN.filter(function(c){
+    return (!busca || (c.numero||'').toLowerCase().indexOf(busca)>-1 || (c.acao||'').toLowerCase().indexOf(busca)>-1) &&
+           (!filtEixo || c.eixo===filtEixo) &&
+           (!filtAno  || String(c.ano_repasse)===filtAno);
+  });
+
+  var tb = document.getElementById('tb-contas-fin');
+  if (!tb) return;
+
+  if (!lista.length) {
+    tb.innerHTML = '<tr><td colspan="10"><div class="empty"><i class="ti ti-database-off"></i><p>Nenhuma conta cadastrada.</p></div></td></tr>';
+    return;
+  }
+
+  tb.innerHTML = lista.map(function(c) {
+    var empTotal = calcularSaldoUtilizar(c.id);
+    var saldoIni = parseFloat(c.saldo_inicial||0);
+    var saldoConta = parseFloat(c.saldo_conta||0);
+    var saldoUtil = saldoConta - empTotal;
+    var pct = saldoIni>0 ? Math.min(empTotal/saldoIni*100,100) : 0;
+    var corPct = pct>90?'#c0392b':pct>60?'#b45309':'#0a6640';
+    var ndLabel = c.nd==='3'?'3 — Serviços':'4 — Equipamentos';
+    var sit = saldoUtil <= 0 ? '<span class="tag" style="background:#fee2e2;color:#c0392b">Esgotada</span>'
+            : pct>80 ? '<span class="tag" style="background:#fef3c7;color:#b45309">Crítico</span>'
+            : '<span class="tag" style="background:#dcfce7;color:#166534">Disponível</span>';
+    return '<tr>'+
+      '<td style="font-weight:600;color:#1a3a5c">'+(c.numero||'—')+'</td>'+
+      '<td style="text-align:center"><span class="tag" style="background:#dbeafe;color:#1e40af">'+c.ano_repasse+'</span></td>'+
+      '<td style="font-size:12px">'+ndLabel+'</td>'+
+      '<td><span class="tag" style="background:#0e749022;color:#0e7490;font-weight:700">'+c.eixo+'</span></td>'+
+      '<td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.acao||'')+'">'+(c.acao||'—')+'</td>'+
+      '<td style="text-align:right;font-weight:600">'+fmtMoeda(saldoIni)+'</td>'+
+      '<td style="text-align:right;color:#c0392b;font-weight:600">'+fmtMoeda(empTotal)+
+        '<div style="width:80px;height:4px;background:#f0f0f0;border-radius:2px;margin:3px 0 0 auto"><div style="width:'+pct.toFixed(0)+'%;height:4px;background:'+corPct+';border-radius:2px"></div></div>'+
+      '</td>'+
+      '<td style="text-align:right;font-weight:700;color:'+(saldoUtil<=0?'#c0392b':'#0a6640')+'">'+fmtMoeda(saldoUtil)+'</td>'+
+      '<td style="text-align:center">'+sit+'</td>'+
+      '<td style="text-align:right;white-space:nowrap">'+
+        '<button class="btn-icon" onclick="editarConta(\''+c.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
+        '<button class="btn-icon" onclick="verEmpenhosConta(\''+c.id+'\')" title="Ver empenhos" style="color:#0a6640"><i class="ti ti-list"></i></button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function renderEmpenhos(filtroContaId) {
+  var busca = (document.getElementById('fin-busca-emp')||{value:''}).value.toLowerCase();
+  var lista = EMPENHOS_FIN.filter(function(e){
+    var ok = !busca || (e.numero||'').toLowerCase().indexOf(busca)>-1 || (e.processo_siga||'').toLowerCase().indexOf(busca)>-1;
+    if (filtroContaId) ok = ok && e.conta_id === filtroContaId;
+    return ok;
+  });
+
+  var tb = document.getElementById('tb-empenhos-fin');
+  if (!tb) return;
+
+  if (!lista.length) {
+    tb.innerHTML='<tr><td colspan="9"><div class="empty"><i class="ti ti-file-invoice"></i><p>Nenhum empenho cadastrado.</p></div></td></tr>';
+    return;
+  }
+
+  tb.innerHTML = lista.map(function(e){
+    var conta = CONTAS_FIN.find(function(c){return c.id===e.conta_id;});
+    var sitCor = {ativo:'#166534',anulado:'#991b1b',liquidado:'#1e40af'};
+    var sitBg  = {ativo:'#dcfce7',anulado:'#fee2e2',liquidado:'#dbeafe'};
+    return '<tr>'+
+      '<td style="font-weight:600;color:#1a3a5c">'+(e.numero||'—')+'</td>'+
+      '<td style="font-size:12px;color:#555">'+(e.processo_siga||'—')+'</td>'+
+      '<td style="font-size:12px">'+(conta?conta.numero:'—')+'</td>'+
+      '<td><span class="tag" style="background:#0e749022;color:#0e7490;font-weight:700">'+(conta?conta.eixo:'—')+'</span></td>'+
+      '<td style="font-size:12px">'+(conta?'ND '+conta.nd:'—')+'</td>'+
+      '<td style="text-align:right;font-weight:700;color:#c0392b">'+fmtMoeda(e.valor)+'</td>'+
+      '<td style="font-size:12px;color:#888">'+(e.data_empenho?new Date(e.data_empenho+'T12:00:00').toLocaleDateString('pt-BR'):'—')+'</td>'+
+      '<td><span class="tag" style="background:'+(sitBg[e.situacao]||'#f3f4f6')+';color:'+(sitCor[e.situacao]||'#374151')+'">'+(e.situacao||'—')+'</span></td>'+
+      '<td style="text-align:right;white-space:nowrap">'+
+        '<button class="btn-icon" onclick="editarEmpenhoFin(\''+e.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
+        '<button class="btn-icon" onclick="excluirEmpenhoFin(\''+e.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function verEmpenhosConta(contaId) {
+  finTab('empenhos');
+  renderEmpenhos(contaId);
+}
+
+// ── MODAL CONTA ──
+function abrirModalConta(id) {
+  document.getElementById('conta-edit-id').value = id||'';
+  document.getElementById('m-conta-title').textContent = id ? 'Editar conta' : 'Nova conta';
+  if (id) {
+    var c = CONTAS_FIN.find(function(x){return x.id===id;});
+    if (c) {
+      document.getElementById('conta-numero').value = c.numero||'';
+      document.getElementById('conta-ano').value    = c.ano_repasse||'';
+      document.getElementById('conta-nd').value     = c.nd||'';
+      document.getElementById('conta-eixo').value   = c.eixo||'';
+      document.getElementById('conta-acao').value   = c.acao||'';
+      document.getElementById('conta-saldo-inicial').value = c.saldo_inicial||'';
+      document.getElementById('conta-saldo-conta').value   = c.saldo_conta||'';
+    }
+  } else {
+    ['conta-numero','conta-acao','conta-saldo-inicial','conta-saldo-conta'].forEach(function(f){ document.getElementById(f).value=''; });
+    document.getElementById('conta-ano').value=''; document.getElementById('conta-nd').value=''; document.getElementById('conta-eixo').value='';
+  }
+  document.getElementById('conta-preview').style.display='block';
+  abrirModal('m-conta');
+}
+
+function editarConta(id) { abrirModalConta(id); }
+
+async function salvarConta() {
+  var numero = document.getElementById('conta-numero').value.trim();
+  var ano    = document.getElementById('conta-ano').value;
+  var nd     = document.getElementById('conta-nd').value;
+  var eixo   = document.getElementById('conta-eixo').value;
+  var acao   = document.getElementById('conta-acao').value.trim();
+  var saldoI = parseFloat(document.getElementById('conta-saldo-inicial').value)||0;
+  var saldoC = parseFloat(document.getElementById('conta-saldo-conta').value)||0;
+  var editId = document.getElementById('conta-edit-id').value;
+
+  if (!numero||!ano||!nd||!eixo||!acao) { showToast('Preencha todos os campos obrigatórios.','error'); return; }
+
+  var payload = { numero, ano_repasse:parseInt(ano), nd, eixo, acao, saldo_inicial:saldoI, saldo_conta:saldoC };
+
+  try {
+    if (editId) {
+      await sb.from('fin_contas').update(payload).eq('id', editId);
+      showToast('Conta atualizada!');
+    } else {
+      await sb.from('fin_contas').insert(payload);
+      showToast('Conta cadastrada!');
+    }
+    fecharModal('m-conta');
+    await renderFinanceiro();
+  } catch(e) { showToast('Erro ao salvar conta.','error'); }
+}
+
+// ── MODAL EMPENHO ──
+function abrirModalEmpenho(id) {
+  document.getElementById('emp-fin-edit-id').value = id||'';
+  document.getElementById('m-emp-fin-title').textContent = id ? 'Editar empenho' : 'Novo empenho';
+
+  // Popular select de processos
+  var selProc = document.getElementById('emp-fin-processo');
+  selProc.innerHTML = '<option value="">Selecionar processo...</option>';
+  processos.forEach(function(p){ selProc.innerHTML += '<option value="'+p.siga+'">'+(p.siga||'Sem SIGA')+' — '+p.objeto.substring(0,50)+'</option>'; });
+
+  // Popular select de contas
+  var selConta = document.getElementById('emp-fin-conta');
+  selConta.innerHTML = '<option value="">Selecionar conta...</option>';
+  CONTAS_FIN.forEach(function(c){
+    var empTotal = calcularSaldoUtilizar(c.id);
+    var saldoDisp = parseFloat(c.saldo_conta||0) - empTotal;
+    selConta.innerHTML += '<option value="'+c.id+'">'+c.numero+' | '+c.eixo+' | ND '+c.nd+' | '+fmtMoeda(saldoDisp)+'</option>';
+  });
+
+  if (id) {
+    var e = EMPENHOS_FIN.find(function(x){return x.id===id;});
+    if (e) {
+      document.getElementById('emp-fin-numero').value   = e.numero||'';
+      document.getElementById('emp-fin-data').value     = e.data_empenho||'';
+      document.getElementById('emp-fin-processo').value = e.processo_siga||'';
+      document.getElementById('emp-fin-conta').value    = e.conta_id||'';
+      document.getElementById('emp-fin-valor').value    = e.valor||'';
+      document.getElementById('emp-fin-situacao').value = e.situacao||'ativo';
+      document.getElementById('emp-fin-obs').value      = e.obs||'';
+      atualizarInfoConta();
+    }
+  } else {
+    ['emp-fin-numero','emp-fin-obs'].forEach(function(f){document.getElementById(f).value='';});
+    document.getElementById('emp-fin-data').value     = new Date().toISOString().split('T')[0];
+    document.getElementById('emp-fin-processo').value = '';
+    document.getElementById('emp-fin-conta').value    = '';
+    document.getElementById('emp-fin-valor').value    = '';
+    document.getElementById('emp-fin-situacao').value = 'ativo';
+    document.getElementById('emp-info-conta').style.display='none';
+    document.getElementById('emp-alerta-saldo').style.display='none';
+  }
+  abrirModal('m-empenho-fin');
+}
+
+function editarEmpenhoFin(id) { abrirModalEmpenho(id); }
+
+function atualizarInfoConta() {
+  var contaId = document.getElementById('emp-fin-conta').value;
+  var info = document.getElementById('emp-info-conta');
+  if (!contaId) { info.style.display='none'; return; }
+  var c = CONTAS_FIN.find(function(x){return x.id===contaId;});
+  if (!c) { info.style.display='none'; return; }
+  var empTotal  = calcularSaldoUtilizar(c.id);
+  var saldoDisp = parseFloat(c.saldo_conta||0) - empTotal;
+  document.getElementById('emp-info-eixo').textContent  = c.eixo||'—';
+  document.getElementById('emp-info-nd').textContent    = 'ND '+c.nd;
+  document.getElementById('emp-info-saldo').textContent = fmtMoeda(saldoDisp);
+  document.getElementById('emp-info-saldo').style.color = saldoDisp<=0?'#c0392b':'#0a6640';
+  info.style.display='block';
+  validarSaldoEmpenho();
+}
+
+function validarSaldoEmpenho() {
+  var contaId = document.getElementById('emp-fin-conta').value;
+  var valor   = parseFloat(document.getElementById('emp-fin-valor').value)||0;
+  var alerta  = document.getElementById('emp-alerta-saldo');
+  if (!contaId || !valor) { alerta.style.display='none'; return; }
+  var c = CONTAS_FIN.find(function(x){return x.id===contaId;});
+  if (!c) { alerta.style.display='none'; return; }
+  var empTotal  = calcularSaldoUtilizar(c.id);
+  var editId    = document.getElementById('emp-fin-edit-id').value;
+  // Se editando, desconsiderar o valor atual do empenho
+  if (editId) {
+    var empAtual = EMPENHOS_FIN.find(function(e){return e.id===editId;});
+    if (empAtual) empTotal -= parseFloat(empAtual.valor||0);
+  }
+  var saldoDisp = parseFloat(c.saldo_conta||0) - empTotal;
+  alerta.style.display = valor > saldoDisp ? 'block' : 'none';
+}
+
+function preencherCamposProcesso() {
+  var siga = document.getElementById('emp-fin-processo').value;
+  // Preencher número de empenho se o processo já tiver
+  var proc = processos.find(function(p){return p.siga===siga;});
+  if (proc && proc.empenho) document.getElementById('emp-fin-numero').value = proc.empenho;
+}
+
+async function salvarEmpenhoFin() {
+  var numero  = document.getElementById('emp-fin-numero').value.trim();
+  var data    = document.getElementById('emp-fin-data').value;
+  var contaId = document.getElementById('emp-fin-conta').value;
+  var valor   = parseFloat(document.getElementById('emp-fin-valor').value)||0;
+  var sit     = document.getElementById('emp-fin-situacao').value;
+  var obs     = document.getElementById('emp-fin-obs').value.trim();
+  var siga    = document.getElementById('emp-fin-processo').value;
+  var editId  = document.getElementById('emp-fin-edit-id').value;
+
+  if (!numero||!contaId||!valor||!data) { showToast('Preencha número, conta, valor e data.','error'); return; }
+
+  // Verificar saldo
+  var c = CONTAS_FIN.find(function(x){return x.id===contaId;});
+  if (c && sit==='ativo') {
+    var empTotal = calcularSaldoUtilizar(contaId);
+    if (editId) {
+      var empAtual = EMPENHOS_FIN.find(function(e){return e.id===editId;});
+      if (empAtual) empTotal -= parseFloat(empAtual.valor||0);
+    }
+    var saldoDisp = parseFloat(c.saldo_conta||0) - empTotal;
+    if (valor > saldoDisp) {
+      if (!confirm('O valor excede o saldo disponível ('+fmtMoeda(saldoDisp)+'). Deseja continuar mesmo assim?')) return;
+    }
+  }
+
+  var payload = { numero, data_empenho:data, conta_id:contaId, valor, situacao:sit, obs, processo_siga:siga||null };
+
+  try {
+    if (editId) {
+      await sb.from('fin_empenhos').update(payload).eq('id', editId);
+      showToast('Empenho atualizado! Saldo recalculado.');
+    } else {
+      await sb.from('fin_empenhos').insert(payload);
+      showToast('Empenho registrado! Saldo debitado automaticamente.');
+    }
+    fecharModal('m-empenho-fin');
+    await renderFinanceiro();
+    renderMetricsFinanceiro();
+    renderContas();
+  } catch(e) { showToast('Erro ao salvar empenho.','error'); }
+}
+
+async function excluirEmpenhoFin(id) {
+  if (!confirm('Excluir este empenho? O saldo será restaurado automaticamente.')) return;
+  await sb.from('fin_empenhos').delete().eq('id', id);
+  showToast('Empenho excluído. Saldo restaurado.');
+  await renderFinanceiro();
 }
 
 verificarSessao();
