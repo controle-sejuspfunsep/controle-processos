@@ -6,6 +6,7 @@
 <title>Controle de Processos — SEJUSP/FUNSEP</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;background:#f4f4f4;color:#222}
@@ -172,12 +173,45 @@ tr:hover td{background:#f8fafc}
       <div id="page-dashboard" class="page active">
         <div class="section-header">
           <span class="section-title">Dashboard</span>
-          <span style="font-size:12px;color:#888" id="dash-date"></span>
+          <div style="display:flex;align-items:center;gap:10px">
+            <select id="dash-filtro-ano" onchange="renderDashboard()" style="font-size:12px;padding:5px 10px;border:1px solid #ddd;border-radius:6px;background:#fff">
+              <option value="">Todos os anos</option>
+            </select>
+            <span style="font-size:12px;color:#888" id="dash-date"></span>
+          </div>
         </div>
+
+        <!-- Cards resumo -->
         <div class="metrics" id="metrics-box"></div>
-        <div class="card">
-          <div class="sec-label">Processos recentes</div>
-          <div id="recent-list"></div>
+
+        <!-- Gráficos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+          <div class="card" style="padding:18px">
+            <div class="sec-label">Status dos processos</div>
+            <canvas id="chart-status" style="max-height:220px"></canvas>
+          </div>
+          <div class="card" style="padding:18px">
+            <div class="sec-label">Processos por órgão</div>
+            <canvas id="chart-orgao" style="max-height:220px"></canvas>
+          </div>
+        </div>
+
+        <!-- Gráfico por ano -->
+        <div class="card" style="padding:18px;margin-bottom:18px">
+          <div class="sec-label">Evolução por ano</div>
+          <canvas id="chart-ano" style="max-height:200px"></canvas>
+        </div>
+
+        <!-- Por tipo -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+          <div class="card" style="padding:18px">
+            <div class="sec-label">Tipos de contratação</div>
+            <canvas id="chart-tipo" style="max-height:200px"></canvas>
+          </div>
+          <div class="card" style="padding:18px">
+            <div class="sec-label">Processos recentes</div>
+            <div id="recent-list"></div>
+          </div>
         </div>
       </div>
 
@@ -415,33 +449,160 @@ function statusLabel(s) {
   return { em_andamento:'Em andamento', aguardando:'Aguardando', concluido:'Concluído', suspenso:'Suspenso', cancelado:'Cancelado' }[s] || s;
 }
 
+var chartStatus = null, chartOrgao = null, chartAno = null, chartTipo = null;
+
 function renderDashboard() {
-  var total     = processos.length;
-  var andamento = processos.filter(function(p){ return p.status==='em_andamento'; }).length;
-  var concluido = processos.filter(function(p){ return p.status==='concluido'; }).length;
-  var aguardando= processos.filter(function(p){ return p.status==='aguardando'; }).length;
+  // Filtro por ano
+  var anoSel = (document.getElementById('dash-filtro-ano')||{value:''}).value;
+
+  // Popular select de anos
+  var anos = {};
+  processos.forEach(function(p) {
+    var m = (p.siga||'').match(/(\/|\/)?(20\d{2})/);
+    if (!m) m = (p.created_at||'').match(/(20\d{2})/);
+    if (m) anos[m[m.length-1]] = true;
+  });
+  var selEl = document.getElementById('dash-filtro-ano');
+  if (selEl && Object.keys(anos).length > 0) {
+    var anosOrdenados = Object.keys(anos).sort();
+    var optsHtml = '<option value="">Todos os anos</option>';
+    anosOrdenados.forEach(function(a){ optsHtml += '<option value="'+a+'"'+(a===anoSel?' selected':'')+'>'+a+'</option>'; });
+    selEl.innerHTML = optsHtml;
+  }
+
+  // Filtrar por ano se selecionado
+  var lista = processos;
+  if (anoSel) {
+    lista = processos.filter(function(p) {
+      return (p.siga||'').indexOf(anoSel) > -1 ||
+             (p.prodoc||'').indexOf(anoSel) > -1 ||
+             (p.created_at||'').indexOf(anoSel) > -1;
+    });
+  }
+
+  var total     = lista.length;
+  var andamento = lista.filter(function(p){ return p.status==='em_andamento'; }).length;
+  var concluido = lista.filter(function(p){ return p.status==='concluido'; }).length;
+  var aguardando= lista.filter(function(p){ return p.status==='aguardando'; }).length;
+  var cancelado = lista.filter(function(p){ return p.status==='cancelado'; }).length;
 
   document.getElementById('metrics-box').innerHTML =
-    '<div class="metric"><div class="metric-val">'+total+'</div><div class="metric-lbl">Total de processos</div></div>'+
+    '<div class="metric"><div class="metric-val">'+total+'</div><div class="metric-lbl">Total'+(anoSel?' '+anoSel:'')+'</div></div>'+
     '<div class="metric"><div class="metric-val" style="color:#1e40af">'+andamento+'</div><div class="metric-lbl">Em andamento</div></div>'+
     '<div class="metric"><div class="metric-val" style="color:#92400e">'+aguardando+'</div><div class="metric-lbl">Aguardando</div></div>'+
     '<div class="metric"><div class="metric-val" style="color:#166534">'+concluido+'</div><div class="metric-lbl">Concluídos</div></div>';
 
-  var recentes = processos.slice(0, 5);
+  // ── Gráfico Status (rosca) ──
+  var ctxS = document.getElementById('chart-status');
+  if (ctxS) {
+    if (chartStatus) chartStatus.destroy();
+    chartStatus = new Chart(ctxS, {
+      type: 'doughnut',
+      data: {
+        labels: ['Em andamento','Aguardando','Concluído','Cancelado'],
+        datasets: [{ data: [andamento, aguardando, concluido, cancelado],
+          backgroundColor: ['#3b82f6','#f59e0b','#22c55e','#ef4444'],
+          borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: { plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:12, padding:8 } } }, cutout:'60%' }
+    });
+  }
+
+  // ── Gráfico Órgão (barras) ──
+  var porOrgao = {};
+  lista.forEach(function(p){ porOrgao[p.orgao] = (porOrgao[p.orgao]||0)+1; });
+  var ctxO = document.getElementById('chart-orgao');
+  if (ctxO) {
+    if (chartOrgao) chartOrgao.destroy();
+    chartOrgao = new Chart(ctxO, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(porOrgao),
+        datasets: [{ label:'Processos', data: Object.values(porOrgao),
+          backgroundColor: ['#1a3a5c','#0a6640','#3b82f6','#f59e0b'],
+          borderRadius: 6 }]
+      },
+      options: { plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true, ticks:{stepSize:1}, grid:{color:'#f0f0f0'} }, x:{ grid:{display:false} } } }
+    });
+  }
+
+  // ── Gráfico Evolução por ano (linha) ──
+  var porAno = {};
+  processos.forEach(function(p) {
+    var ano = '';
+    var m = (p.siga||'').match(/(20\d{2})/);
+    if (m) ano = m[1];
+    else { m = (p.created_at||'').match(/(20\d{2})/); if(m) ano=m[1]; }
+    if (ano) porAno[ano] = (porAno[ano]||0)+1;
+  });
+  var anosLabel = Object.keys(porAno).sort();
+  var ctxA = document.getElementById('chart-ano');
+  if (ctxA) {
+    if (chartAno) chartAno.destroy();
+    chartAno = new Chart(ctxA, {
+      type: 'bar',
+      data: {
+        labels: anosLabel,
+        datasets: [{
+          label: 'Processos', data: anosLabel.map(function(a){ return porAno[a]; }),
+          backgroundColor: anosLabel.map(function(a){ return a===anoSel?'#1a3a5c':'#93c5fd'; }),
+          borderRadius: 6, borderSkipped: false
+        }]
+      },
+      options: {
+        plugins:{ legend:{display:false},
+          tooltip:{ callbacks:{ label:function(c){ return c.raw+' processos em '+c.label; } } } },
+        scales:{ y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'#f0f0f0'}}, x:{grid:{display:false}} }
+      }
+    });
+  }
+
+  // ── Gráfico Tipo de contratação (pizza) ──
+  var porTipo = {};
+  lista.forEach(function(p){ var t=p.base_legal||'Não informado'; porTipo[t]=(porTipo[t]||0)+1; });
+  // Simplificar labels
+  var tipoSimp = {};
+  Object.keys(porTipo).forEach(function(k){
+    var s = k;
+    if (k.toLowerCase().indexOf('adesão')>-1) s='Adesão';
+    else if (k.toLowerCase().indexOf('dispensa')>-1) s='Dispensa';
+    else if (k.toLowerCase().indexOf('inexigib')>-1) s='Inexigibilidade';
+    else if (k.toLowerCase().indexOf('pregão')>-1) s='Pregão';
+    else if (k.toLowerCase().indexOf('arp')>-1||k.toLowerCase().indexOf('utilização')>-1) s='Uso de ARP';
+    else s='Outros';
+    tipoSimp[s] = (tipoSimp[s]||0) + porTipo[k];
+  });
+  var ctxT = document.getElementById('chart-tipo');
+  if (ctxT) {
+    if (chartTipo) chartTipo.destroy();
+    chartTipo = new Chart(ctxT, {
+      type: 'pie',
+      data: {
+        labels: Object.keys(tipoSimp),
+        datasets: [{ data: Object.values(tipoSimp),
+          backgroundColor: ['#1a3a5c','#0a6640','#3b82f6','#f59e0b','#ef4444','#8b5cf6'],
+          borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: { plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:12, padding:6 } } } }
+    });
+  }
+
+  // ── Processos recentes ──
+  var recentes = lista.slice(0, 5);
   if (!recentes.length) {
-    document.getElementById('recent-list').innerHTML = '<div class="empty">Nenhum processo cadastrado ainda.</div>';
+    document.getElementById('recent-list').innerHTML = '<div class="empty">Nenhum processo '+(anoSel?'em '+anoSel:'')+'.</div>';
     return;
   }
-  var html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'+
-    '<th style="text-align:left;padding:7px 10px;font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #eee">Órgão</th>'+
-    '<th style="text-align:left;padding:7px 10px;font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #eee">Objeto</th>'+
-    '<th style="text-align:left;padding:7px 10px;font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #eee">Status</th>'+
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'+
+    '<th style="text-align:left;padding:6px 8px;font-size:10px;color:#888;font-weight:700;border-bottom:1px solid #eee">Órgão</th>'+
+    '<th style="text-align:left;padding:6px 8px;font-size:10px;color:#888;font-weight:700;border-bottom:1px solid #eee">Objeto</th>'+
+    '<th style="text-align:left;padding:6px 8px;font-size:10px;color:#888;font-weight:700;border-bottom:1px solid #eee">Status</th>'+
     '</tr></thead><tbody>';
   recentes.forEach(function(p) {
     html += '<tr>'+
-      '<td style="padding:9px 10px"><span class="tag tag-'+p.orgao.toLowerCase()+'">'+p.orgao+'</span></td>'+
-      '<td style="padding:9px 10px;color:#222">'+p.objeto.substring(0,60)+(p.objeto.length>60?'...':'')+'</td>'+
-      '<td style="padding:9px 10px"><span class="tag tag-'+p.status+'">'+statusLabel(p.status)+'</span></td>'+
+      '<td style="padding:7px 8px"><span class="tag tag-'+p.orgao.toLowerCase()+'">'+p.orgao+'</span></td>'+
+      '<td style="padding:7px 8px;color:#222">'+p.objeto.substring(0,50)+(p.objeto.length>50?'...':'')+'</td>'+
+      '<td style="padding:7px 8px"><span class="tag tag-'+p.status+'">'+statusLabel(p.status)+'</span></td>'+
     '</tr>';
   });
   html += '</tbody></table>';
