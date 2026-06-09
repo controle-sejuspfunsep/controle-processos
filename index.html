@@ -169,6 +169,7 @@ tr:hover td{background:#f8fafc}
       <div class="nav-item active" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
       <div class="nav-item" onclick="showPage('processos',this)"><i class="ti ti-files"></i> Processos</div>
       <div class="nav-item" onclick="showPage('novo',this);resetForm()"><i class="ti ti-plus"></i> Novo Processo</div>
+      <div class="nav-item" onclick="showPage('fluxograma',this)"><i class="ti ti-git-branch"></i> Fluxograma</div>
       <div class="nav-item" id="nav-usuarios" style="display:none" onclick="showPage('usuarios',this)"><i class="ti ti-users"></i> Usuários</div>
     </div>
     <div class="content">
@@ -326,6 +327,15 @@ tr:hover td{background:#f8fafc}
             <button class="btn-primary" onclick="salvarProcesso()"><i class="ti ti-device-floppy"></i> Salvar Processo</button>
           </div>
         </div>
+      </div>
+
+      <!-- FLUXOGRAMA -->
+      <div id="page-fluxograma" class="page">
+        <div class="section-header">
+          <span class="section-title">Fluxograma de Processos</span>
+          <span style="font-size:12px;color:#888">Fluxo padrão de tramitação — FUNSEP/SEJUSP</span>
+        </div>
+        <div id="fluxograma-container"></div>
       </div>
 
       <!-- USUÁRIOS (só Gestores) -->
@@ -659,6 +669,7 @@ function showPage(id, el) {
   if (id==='dashboard') renderDashboard();
   if (id==='processos') renderTable();
   if (id==='usuarios')  carregarUsuarios();
+  if (id==='fluxograma') renderFluxograma();
 }
 
 function selectOrgao(o) {
@@ -962,6 +973,297 @@ function exportarPDF() {
   win.document.close();
   setTimeout(function(){ win.print(); }, 800);
   showToast('Relatório PDF gerado com ' + lista.length + ' processos!');
+}
+
+// ════════════════════════════════════════════════
+// FLUXOGRAMA DE PROCESSOS
+// ════════════════════════════════════════════════
+
+var ETAPAS = [
+  {
+    id: 1,
+    orgao: 'CPP',
+    nome: 'Coordenadoria de Programas e Projetos',
+    cor: '#1a3a5c',
+    bg: '#dbeafe',
+    icone: 'ti-file-plus',
+    titulo: '1. Criação da Demanda',
+    descricao: 'Cria a demanda e elabora todas as peças do processo (Termo de Referência, ETP, Mapa de Riscos, DFD e demais documentos necessários).',
+    acoes: ['Elaborar Termo de Referência', 'Elaborar ETP', 'Elaborar Mapa de Riscos', 'Elaborar DFD', 'Preparar demais peças do processo'],
+    prazo: ''
+  },
+  {
+    id: 2,
+    orgao: 'SECRETÁRIO',
+    nome: 'Secretário de Estado',
+    cor: '#7c3aed',
+    bg: '#ede9fe',
+    icone: 'ti-user-check',
+    titulo: '2. Autorização de Abertura',
+    descricao: 'Analisa a demanda e autoriza formalmente a abertura do processo administrativo.',
+    acoes: ['Analisar a demanda elaborada pela CPP', 'Emitir despacho de autorização', 'Assinar autorização de abertura'],
+    prazo: ''
+  },
+  {
+    id: 3,
+    orgao: 'CAF',
+    nome: 'Coordenadoria Administrativa e Financeira',
+    cor: '#0a6640',
+    bg: '#d1fae5',
+    icone: 'ti-file-description',
+    titulo: '3. Abertura no SIGA',
+    descricao: 'Abre o processo no sistema SIGA e despacha para a CPP a capa do processo para numeração das peças.',
+    acoes: ['Abrir processo no SIGA', 'Gerar número do processo', 'Despachar capa do processo para a CPP'],
+    prazo: ''
+  },
+  {
+    id: 4,
+    orgao: 'CPP',
+    nome: 'Coordenadoria de Programas e Projetos',
+    cor: '#1a3a5c',
+    bg: '#dbeafe',
+    icone: 'ti-list-numbers',
+    titulo: '4. Numeração das Peças',
+    descricao: 'Recebe a capa do processo da CAF, enumera todas as peças de acordo com o número do processo recebido e despacha de volta para a CAF.',
+    acoes: ['Receber capa do processo com número SIGA', 'Numerar todas as peças sequencialmente', 'Despachar processo numerado para a CAF'],
+    prazo: ''
+  },
+  {
+    id: 5,
+    orgao: 'CAF',
+    nome: 'Coordenadoria Administrativa e Financeira',
+    cor: '#0a6640',
+    bg: '#d1fae5',
+    icone: 'ti-clipboard-check',
+    titulo: '5. Instrução e Tramitação',
+    descricao: 'Analisa as peças do processo, instrui no SIGA e tramita para Dotação Orçamentária na ADINS.',
+    acoes: ['Analisar todas as peças do processo', 'Instruir processo no SIGA', 'Tramitar para Dotação Orçamentária'],
+    prazo: ''
+  },
+  {
+    id: 6,
+    orgao: 'ADINS',
+    nome: 'Administração e Finanças do Estado',
+    cor: '#b45309',
+    bg: '#fef3c7',
+    icone: 'ti-coins',
+    titulo: '6. Dotação Orçamentária',
+    descricao: 'Realiza a dotação orçamentária, insere o Quadro de Detalhamento de Despesa (QDD), Razão Orçamentária e tramita para "Analisar Processo" no SIGA.',
+    acoes: ['Realizar dotação orçamentária', 'Inserir Quadro de Detalhamento de Despesa (QDD)', 'Inserir Razão Orçamentária', 'Tramitar para Analisar Processo no SIGA'],
+    prazo: ''
+  },
+  {
+    id: 7,
+    orgao: 'NGCC',
+    nome: 'Núcleo de Gestão de Contratos e Convênios',
+    cor: '#0e7490',
+    bg: '#cffafe',
+    icone: 'ti-file-search',
+    titulo: '7. Análise e Documentação',
+    descricao: 'Responsável por analisar o processo e inserir as documentações pertinentes para continuidade da tramitação.',
+    acoes: ['Analisar processo recebido', 'Inserir documentações pertinentes', 'Verificar conformidade das peças'],
+    prazo: ''
+  },
+  {
+    id: 8,
+    orgao: 'ASSEJUR',
+    nome: 'Assessoria Jurídica',
+    cor: '#9d174d',
+    bg: '#fce7f3',
+    icone: 'ti-scale',
+    titulo: '8. Análise Jurídica Prévia',
+    descricao: 'Realiza análise jurídica prévia e insere o despacho de conformidade no processo.',
+    acoes: ['Realizar análise jurídica prévia', 'Emitir despacho de conformidade', 'Inserir despacho no processo'],
+    prazo: ''
+  },
+  {
+    id: 9,
+    orgao: 'NGCC → PGE',
+    nome: 'NGCC encaminha para PGE',
+    cor: '#0e7490',
+    bg: '#cffafe',
+    icone: 'ti-send',
+    titulo: '9. Encaminhamento à PGE',
+    descricao: 'O NGCC encaminha o processo para a Procuradoria Geral do Estado para análise jurídica aprofundada.',
+    acoes: ['Preparar processo para envio', 'Encaminhar para PGE', 'Registrar tramitação no SIGA'],
+    prazo: ''
+  },
+  {
+    id: 10,
+    orgao: 'PGE',
+    nome: 'Procuradoria Geral do Estado',
+    cor: '#be123c',
+    bg: '#fee2e2',
+    icone: 'ti-gavel',
+    titulo: '10. Análise Jurídica e Parecer',
+    descricao: 'Realiza análise jurídica aprofundada do processo e emite Parecer Jurídico fundamentado.',
+    acoes: ['Analisar processo recebido', 'Realizar análise jurídica completa', 'Emitir Parecer Jurídico', 'Devolver processo ao NGCC'],
+    prazo: '14 dias úteis'
+  },
+  {
+    id: 11,
+    orgao: 'NGCC',
+    nome: 'Núcleo de Gestão de Contratos e Convênios',
+    cor: '#0e7490',
+    bg: '#cffafe',
+    icone: 'ti-checks',
+    titulo: '11. Cumprimento das Diligências',
+    descricao: 'Recebe o processo da PGE e cumpre todas as diligências apontadas no Parecer Jurídico.',
+    acoes: ['Receber processo da PGE', 'Analisar diligências do parecer', 'Cumprir cada diligência apontada', 'Juntar documentos complementares'],
+    prazo: ''
+  },
+  {
+    id: 12,
+    orgao: 'CAF',
+    nome: 'Coordenadoria Administrativa e Financeira',
+    cor: '#0a6640',
+    bg: '#d1fae5',
+    icone: 'ti-receipt',
+    titulo: '12. PRODOC e Autorização de Empenho',
+    descricao: 'Abre o processo no PRODOC, instrui e realiza a autorização de empenho para execução da despesa.',
+    acoes: ['Abrir processo no PRODOC', 'Instruir processo no PRODOC', 'Realizar autorização de empenho', 'Registrar nota de empenho'],
+    prazo: ''
+  }
+];
+
+var etapaAtiva = null;
+
+function renderFluxograma() {
+  var container = document.getElementById('fluxograma-container');
+  if (!container) return;
+
+  var html = '<div style="display:flex;gap:20px;align-items:flex-start">';
+
+  // ── Coluna principal: fluxograma ──
+  html += '<div style="flex:1;min-width:0">';
+  html += '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:20px;margin-bottom:16px">';
+  html += '<div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px">Clique em uma etapa para ver os detalhes</div>';
+
+  ETAPAS.forEach(function(e, idx) {
+    var ativo = etapaAtiva === e.id;
+    var borda = ativo ? '2px solid '+e.cor : '1px solid #e0e0e0';
+    var sombra = ativo ? '0 4px 16px rgba(0,0,0,.12)' : '0 1px 4px rgba(0,0,0,.04)';
+
+    html += '<div onclick="selecionarEtapa('+e.id+')" style="cursor:pointer;transition:all .2s">';
+
+    // Seta conectora (exceto primeira)
+    if (idx > 0) {
+      html += '<div style="display:flex;justify-content:center;margin:2px 0">'+
+        '<div style="width:2px;height:20px;background:#cbd5e1"></div>'+
+        '</div>'+
+        '<div style="display:flex;justify-content:center;margin-bottom:2px">'+
+        '<div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:10px solid #cbd5e1"></div>'+
+        '</div>';
+    }
+
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:'+(ativo?e.bg:'#fff')+';border:'+borda+';border-radius:10px;box-shadow:'+sombra+'">';
+    
+    // Número
+    html += '<div style="width:32px;height:32px;border-radius:50%;background:'+e.cor+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">'+e.id+'</div>';
+    
+    // Conteúdo
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+    html += '<span style="background:'+e.cor+';color:#fff;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700">'+e.orgao+'</span>';
+    html += '<span style="font-size:13px;font-weight:600;color:#222">'+e.titulo.replace(/^\d+\.\s*/,'')+'</span>';
+    if (e.prazo) html += '<span style="background:#fee2e2;color:#be123c;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700"><i class="ti ti-clock" style="font-size:10px"></i> '+e.prazo+'</span>';
+    html += '</div>';
+    html += '<div style="font-size:12px;color:#666;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e.descricao.substring(0,80)+(e.descricao.length>80?'...':'')+'</div>';
+    html += '</div>';
+
+    // Ícone
+    html += '<i class="ti '+e.icone+'" style="font-size:20px;color:'+e.cor+';opacity:.6;flex-shrink:0"></i>';
+    html += '</div></div>';
+  });
+
+  html += '</div></div>'; // fim coluna principal
+
+  // ── Painel de detalhes ──
+  html += '<div style="width:320px;flex-shrink:0">';
+  
+  if (etapaAtiva) {
+    var e = ETAPAS.find(function(x){ return x.id === etapaAtiva; });
+    html += '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;position:sticky;top:20px">';
+    html += '<div style="background:'+e.cor+';padding:16px 18px">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">';
+    html += '<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff">'+e.id+'</div>';
+    html += '<div><div style="font-size:11px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase;letter-spacing:.5px">'+e.orgao+'</div>';
+    html += '<div style="font-size:15px;font-weight:700;color:#fff">'+e.titulo.replace(/^\d+\.\s*/,'')+'</div></div>';
+    html += '</div>';
+    html += '<div style="font-size:12px;color:rgba(255,255,255,.85);line-height:1.5">'+e.nome+'</div>';
+    html += '</div>';
+    
+    html += '<div style="padding:16px 18px">';
+    html += '<div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Descrição</div>';
+    html += '<p style="font-size:13px;color:#444;line-height:1.6;margin-bottom:14px">'+e.descricao+'</p>';
+    
+    html += '<div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Ações desta etapa</div>';
+    html += '<ul style="list-style:none;padding:0;margin:0">';
+    e.acoes.forEach(function(a) {
+      html += '<li style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333">'+
+        '<i class="ti ti-circle-check" style="color:'+e.cor+';font-size:15px;margin-top:1px;flex-shrink:0"></i>'+
+        '<span>'+a+'</span></li>';
+    });
+    html += '</ul>';
+    
+    if (e.prazo) {
+      html += '<div style="margin-top:14px;background:#fee2e2;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px">';
+      html += '<i class="ti ti-clock" style="color:#be123c;font-size:18px"></i>';
+      html += '<div><div style="font-size:11px;font-weight:700;color:#be123c">PRAZO</div><div style="font-size:13px;font-weight:600;color:#333">'+e.prazo+'</div></div>';
+      html += '</div>';
+    }
+
+    // Navegação
+    html += '<div style="display:flex;gap:8px;margin-top:16px">';
+    if (etapaAtiva > 1) {
+      html += '<button onclick="selecionarEtapa('+(etapaAtiva-1)+')" class="btn-secondary" style="flex:1;padding:8px;font-size:12px"><i class="ti ti-arrow-left"></i> Anterior</button>';
+    }
+    if (etapaAtiva < ETAPAS.length) {
+      html += '<button onclick="selecionarEtapa('+(etapaAtiva+1)+')" class="btn-primary" style="flex:1;padding:8px;font-size:12px">Próxima <i class="ti ti-arrow-right"></i></button>';
+    }
+    html += '</div>';
+    html += '</div></div>';
+  } else {
+    html += '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:30px;text-align:center">';
+    html += '<i class="ti ti-git-branch" style="font-size:40px;color:#cbd5e1;display:block;margin-bottom:12px"></i>';
+    html += '<div style="font-size:14px;font-weight:600;color:#888;margin-bottom:6px">Selecione uma etapa</div>';
+    html += '<div style="font-size:12px;color:#aaa">Clique em qualquer etapa do fluxograma para ver os detalhes, ações e prazos.</div>';
+    html += '</div>';
+
+    // Resumo rápido
+    html += '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;margin-top:14px">';
+    html += '<div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Órgãos envolvidos</div>';
+    var orgaos = [
+      {sigla:'CPP', nome:'Coord. de Programas e Projetos', cor:'#1a3a5c', etapas:'1, 4'},
+      {sigla:'SECRETÁRIO', nome:'Secretário de Estado', cor:'#7c3aed', etapas:'2'},
+      {sigla:'CAF', nome:'Coord. Administrativa e Financeira', cor:'#0a6640', etapas:'3, 5, 12'},
+      {sigla:'ADINS', nome:'Administração e Finanças', cor:'#b45309', etapas:'6'},
+      {sigla:'NGCC', nome:'Núcleo de Gestão de Contratos', cor:'#0e7490', etapas:'7, 9, 11'},
+      {sigla:'ASSEJUR', nome:'Assessoria Jurídica', cor:'#9d174d', etapas:'8'},
+      {sigla:'PGE', nome:'Procuradoria Geral do Estado', cor:'#be123c', etapas:'10'},
+    ];
+    orgaos.forEach(function(o){
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f5f5f5">';
+      html += '<span style="background:'+o.cor+';color:#fff;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">'+o.sigla+'</span>';
+      html += '<span style="font-size:11px;color:#555;flex:1">'+o.nome+'</span>';
+      html += '<span style="font-size:10px;color:#aaa;white-space:nowrap">Etapa '+o.etapas+'</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '</div>'; // fim painel detalhes
+  html += '</div>'; // fim flex container
+
+  container.innerHTML = html;
+}
+
+function selecionarEtapa(id) {
+  etapaAtiva = etapaAtiva === id ? null : id;
+  renderFluxograma();
+  // Scroll suave para o topo do container
+  var el = document.getElementById('fluxograma-container');
+  if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 verificarSessao();
