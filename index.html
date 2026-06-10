@@ -804,6 +804,7 @@ tr:hover td{background:#f8fafc}
               <div class="form-group"><label>Data de publicação</label><input type="date" class="form-input" id="cont-pub"></div>
               <div class="form-group"><label>Início da vigência</label><input type="date" class="form-input" id="cont-inicio"></div>
               <div class="form-group"><label>Fim da vigência</label><input type="date" class="form-input" id="cont-fim" oninput="calcularDiasRestantes()"></div>
+              <div class="form-group"><label>Prazo de entrega do objeto</label><input type="date" class="form-input" id="cont-prazo-entrega" oninput="calcularDiasRestantes()"></div>
               <div class="form-group" id="cont-dias-wrap" style="display:none">
                 <label>Dias restantes</label>
                 <div id="cont-dias-restantes" style="padding:9px 12px;border-radius:7px;font-weight:700;font-size:14px"></div>
@@ -1080,6 +1081,140 @@ tr:hover td{background:#f8fafc}
           <div class="modal-footer">
             <button class="btn-secondary" onclick="fecharModal('m-diaria')">Cancelar</button>
             <button class="btn-primary" onclick="salvarDiaria()"><i class="ti ti-device-floppy"></i> Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL EXECUÇÃO CONTRATUAL -->
+      <div class="modal-overlay" id="m-execucao">
+        <div class="modal-box" style="width:780px;max-height:94vh">
+          <div class="modal-header">
+            <div>
+              <div class="modal-title" id="m-exec-title">Controle de Execução Contratual</div>
+              <div class="modal-sub" id="m-exec-sub">Acompanhamento, ocorrências e prazos</div>
+            </div>
+            <button class="modal-close" onclick="fecharModal('m-execucao')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+
+            <!-- Cards de prazo -->
+            <div id="exec-cards-prazo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px"></div>
+
+            <!-- Abas internas -->
+            <div style="display:flex;gap:0;border-bottom:2px solid #e0e0e0;margin-bottom:16px">
+              <button class="ha-tab-btn active" id="exec-tab-ocorr" onclick="execTab('ocorr')"><i class="ti ti-file-description"></i> Ocorrências</button>
+              <button class="ha-tab-btn" id="exec-tab-nf" onclick="execTab('nf')"><i class="ti ti-receipt"></i> Notas Fiscais</button>
+              <button class="ha-tab-btn" id="exec-tab-hist" onclick="execTab('hist')"><i class="ti ti-history"></i> Histórico</button>
+            </div>
+
+            <!-- ABA OCORRÊNCIAS -->
+            <div id="exec-painel-ocorr">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div class="sec-label" style="margin:0">Registrar ocorrência</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;background:#f8fafc;padding:14px;border-radius:10px;border:1px solid #e0e0e0">
+                <div class="form-group"><label>Tipo de ocorrência</label>
+                  <select class="form-input" id="oc-tipo" onchange="toggleCamposOcorrencia()">
+                    <option value="">Selecione...</option>
+                    <option value="rec_provisorio">Recebimento Provisório</option>
+                    <option value="rec_definitivo">Recebimento Definitivo</option>
+                    <option value="notificacao">Notificação ao fornecedor</option>
+                    <option value="advertencia">Advertência</option>
+                    <option value="multa">Aplicação de multa</option>
+                    <option value="suspensao">Suspensão</option>
+                    <option value="prorrogacao">Prorrogação de prazo</option>
+                    <option value="reajuste">Reajuste de valor</option>
+                    <option value="medicao">Medição / Faturamento</option>
+                    <option value="glosa">Glosa</option>
+                    <option value="outro">Outra ocorrência</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Data da ocorrência</label>
+                  <input type="date" class="form-input" id="oc-data">
+                </div>
+                <!-- Campos específicos por tipo -->
+                <div class="form-group full" id="oc-motivo-wrap">
+                  <label id="oc-motivo-label">Descrição / Motivo</label>
+                  <textarea class="form-input" id="oc-motivo" style="min-height:60px" placeholder="Descreva detalhadamente..."></textarea>
+                </div>
+                <!-- Notificação -->
+                <div id="oc-notif-wrap" style="display:none;grid-column:1/-1">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div class="form-group"><label>Nº da notificação</label>
+                      <input type="text" class="form-input" id="oc-notif-num" placeholder="Ex: NOTIF 001/2025"></div>
+                    <div class="form-group"><label>Prazo para resposta</label>
+                      <input type="date" class="form-input" id="oc-notif-prazo"></div>
+                  </div>
+                </div>
+                <!-- Recebimento -->
+                <div id="oc-receb-wrap" style="display:none;grid-column:1/-1">
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                    <div class="form-group"><label>Responsável pelo recebimento</label>
+                      <input type="text" class="form-input" id="oc-receb-resp" placeholder="Nome do fiscal"></div>
+                    <div class="form-group"><label>Nº NF vinculada</label>
+                      <input type="text" class="form-input" id="oc-receb-nf" placeholder="Ex: NF 00123"></div>
+                    <div class="form-group"><label>Valor da entrega (R$)</label>
+                      <input type="number" step="0.01" class="form-input" id="oc-receb-valor" placeholder="0,00"></div>
+                  </div>
+                </div>
+                <!-- Multa -->
+                <div id="oc-multa-wrap" style="display:none;grid-column:1/-1">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div class="form-group"><label>Percentual de multa (%)</label>
+                      <input type="number" step="0.01" class="form-input" id="oc-multa-pct" placeholder="Ex: 2"></div>
+                    <div class="form-group"><label>Valor da multa (R$)</label>
+                      <input type="number" step="0.01" class="form-input" id="oc-multa-valor" placeholder="0,00"></div>
+                  </div>
+                </div>
+                <div style="grid-column:1/-1;display:flex;justify-content:flex-end">
+                  <button class="btn-primary" style="font-size:12px" onclick="registrarOcorrencia()"><i class="ti ti-plus"></i> Registrar ocorrência</button>
+                </div>
+              </div>
+              <!-- Lista de ocorrências -->
+              <div id="exec-lista-ocorr"></div>
+            </div>
+
+            <!-- ABA NOTAS FISCAIS -->
+            <div id="exec-painel-nf" style="display:none">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;background:#f8fafc;padding:14px;border-radius:10px;border:1px solid #e0e0e0">
+                <div class="form-group"><label>Nº da nota fiscal</label>
+                  <input type="text" class="form-input" id="nf-numero" placeholder="Ex: NF 00123"></div>
+                <div class="form-group"><label>Data de emissão</label>
+                  <input type="date" class="form-input" id="nf-data"></div>
+                <div class="form-group"><label>Valor (R$)</label>
+                  <input type="number" step="0.01" class="form-input" id="nf-valor" placeholder="0,00"></div>
+                <div class="form-group"><label>Status</label>
+                  <select class="form-input" id="nf-status">
+                    <option value="recebida">Recebida</option>
+                    <option value="em_analise">Em análise</option>
+                    <option value="aprovada">Aprovada</option>
+                    <option value="paga">Paga</option>
+                    <option value="glosada">Glosada</option>
+                    <option value="devolvida">Devolvida</option>
+                  </select>
+                </div>
+                <div class="form-group full"><label>Descrição do objeto faturado</label>
+                  <input type="text" class="form-input" id="nf-desc" placeholder="Descrição dos bens/serviços faturados"></div>
+                <div style="grid-column:1/-1;display:flex;justify-content:flex-end">
+                  <button class="btn-primary" style="font-size:12px" onclick="registrarNF()"><i class="ti ti-plus"></i> Registrar nota fiscal</button>
+                </div>
+              </div>
+              <!-- Resumo financeiro -->
+              <div id="nf-resumo" style="margin-bottom:12px"></div>
+              <!-- Lista de NFs -->
+              <div id="exec-lista-nf"></div>
+            </div>
+
+            <!-- ABA HISTÓRICO COMPLETO -->
+            <div id="exec-painel-hist" style="display:none">
+              <div class="sec-label" style="margin-bottom:12px">Linha do tempo do contrato</div>
+              <div id="exec-timeline"></div>
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-execucao')">Fechar</button>
+            <button class="btn-secondary" onclick="exportarExecucaoPDF()"><i class="ti ti-file-type-pdf"></i> Relatório PDF</button>
           </div>
         </div>
       </div>
@@ -3806,6 +3941,412 @@ function exportarHoraAulaPDF() {
     win.document.close();
     setTimeout(function(){ win.print(); }, 600);
   }, 200);
+}
+
+// ════════════════════════════════════════════════
+// CONTROLE DE EXECUÇÃO CONTRATUAL
+// ════════════════════════════════════════════════
+
+var execContratoId = null;
+var OCORRENCIAS    = {};  // { contratoId: [...] }
+var NOTAS_FISCAIS  = {};  // { contratoId: [...] }
+
+var OC_LABELS = {
+  rec_provisorio:'Recebimento Provisório', rec_definitivo:'Recebimento Definitivo',
+  notificacao:'Notificação', advertencia:'Advertência', multa:'Aplicação de multa',
+  suspensao:'Suspensão', prorrogacao:'Prorrogação de prazo', reajuste:'Reajuste de valor',
+  medicao:'Medição/Faturamento', glosa:'Glosa', outro:'Outra ocorrência'
+};
+
+var OC_CORES = {
+  rec_provisorio:{bg:'#dbeafe',cor:'#1e40af',icon:'ti-package'},
+  rec_definitivo:{bg:'#dcfce7',cor:'#166534',icon:'ti-package-check'},
+  notificacao:{bg:'#fef3c7',cor:'#92400e',icon:'ti-bell'},
+  advertencia:{bg:'#fef3c7',cor:'#b45309',icon:'ti-alert-triangle'},
+  multa:{bg:'#fee2e2',cor:'#991b1b',icon:'ti-currency-dollar'},
+  suspensao:{bg:'#fee2e2',cor:'#c0392b',icon:'ti-ban'},
+  prorrogacao:{bg:'#ede9fe',cor:'#6d28d9',icon:'ti-calendar-plus'},
+  reajuste:{bg:'#f0fdf4',cor:'#166534',icon:'ti-refresh'},
+  medicao:{bg:'#f0f9ff',cor:'#0369a1',icon:'ti-ruler'},
+  glosa:{bg:'#fff7ed',cor:'#c2410c',icon:'ti-scissors'},
+  outro:{bg:'#f3f4f6',cor:'#374151',icon:'ti-file-text'}
+};
+
+var NF_STATUS_CORES = {
+  recebida:{bg:'#dbeafe',cor:'#1e40af'},
+  em_analise:{bg:'#fef3c7',cor:'#92400e'},
+  aprovada:{bg:'#dcfce7',cor:'#166534'},
+  paga:{bg:'#d1fae5',cor:'#065f46'},
+  glosada:{bg:'#fee2e2',cor:'#991b1b'},
+  devolvida:{bg:'#f3f4f6',cor:'#374151'}
+};
+
+var NF_STATUS_LABELS = {
+  recebida:'Recebida', em_analise:'Em análise', aprovada:'Aprovada',
+  paga:'Paga', glosada:'Glosada', devolvida:'Devolvida'
+};
+
+// ── CARREGAR EXECUÇÃO DO SUPABASE ──
+async function carregarExecucao(contratoId) {
+  try {
+    var ro = await sb.from('exec_ocorrencias').select('*').eq('contrato_id', contratoId).order('data_ocorrencia');
+    if (!ro.error) OCORRENCIAS[contratoId] = ro.data||[];
+    var rn = await sb.from('exec_notas_fiscais').select('*').eq('contrato_id', contratoId).order('data_emissao');
+    if (!rn.error) NOTAS_FISCAIS[contratoId] = rn.data||[];
+  } catch(e) {
+    OCORRENCIAS[contratoId]  = OCORRENCIAS[contratoId]||[];
+    NOTAS_FISCAIS[contratoId]= NOTAS_FISCAIS[contratoId]||[];
+  }
+}
+
+// ── ABRIR MODAL EXECUÇÃO ──
+async function abrirExecucao(contratoId) {
+  execContratoId = contratoId;
+  var c = CONTRATOS.find(function(x){return x.id===contratoId;});
+  if (!c) return;
+
+  document.getElementById('m-exec-title').textContent = 'Execução: '+(c.numero||c.empresa);
+  document.getElementById('m-exec-sub').textContent   = c.empresa+' · '+c.orgao;
+
+  await carregarExecucao(contratoId);
+
+  // Cards de prazo
+  renderCardsPrazo(c);
+
+  // Limpar formulários
+  document.getElementById('oc-tipo').value  = '';
+  document.getElementById('oc-data').value  = new Date().toISOString().split('T')[0];
+  document.getElementById('oc-motivo').value= '';
+  toggleCamposOcorrencia();
+
+  execTab('ocorr');
+  abrirModal('m-execucao');
+}
+
+function renderCardsPrazo(c) {
+  var el = document.getElementById('exec-cards-prazo');
+  if (!el) return;
+
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  function cardPrazo(label, data, cor_limite, icone) {
+    if (!data) return '<div class="card" style="padding:14px;border-top:3px solid #e5e7eb"><div style="font-size:10px;color:#888;font-weight:700;text-transform:uppercase">'+label+'</div><div style="font-size:14px;font-weight:600;color:#aaa;margin-top:4px">Não definido</div></div>';
+    var d = new Date(data+'T12:00:00');
+    var diff = Math.round((d-hoje)/(1000*60*60*24));
+    var cor = diff<0?'#c0392b':diff<=30?'#c0392b':diff<=90?'#d97706':'#166534';
+    var bg  = diff<0?'#fee2e2':diff<=30?'#fee2e2':diff<=90?'#fef3c7':'#dcfce7';
+    var txt = diff<0?'Vencido há '+Math.abs(diff)+' dias':diff===0?'Vence HOJE':diff<=30?'Vence em '+diff+' dias':''+diff+' dias restantes';
+    return '<div class="card" style="padding:14px;border-top:3px solid '+cor+';background:'+bg+'">'+
+      '<div style="font-size:10px;color:'+cor+';font-weight:700;text-transform:uppercase;letter-spacing:.5px">'+label+'</div>'+
+      '<div style="font-size:13px;font-weight:700;color:#1a3a5c;margin:4px 0">'+fmtDataBR(data)+'</div>'+
+      '<div style="font-size:11px;font-weight:700;color:'+cor+'"><i class="ti '+icone+'"></i> '+txt+'</div>'+
+    '</div>';
+  }
+
+  el.innerHTML =
+    cardPrazo('Vigência inicial', c.vigencia_inicio, '#3b82f6', 'ti-calendar') +
+    cardPrazo('Fim da vigência', c.vigencia_fim, '#f59e0b', 'ti-calendar-due') +
+    cardPrazo('Prazo de entrega', c.prazo_entrega, '#c0392b', 'ti-truck-delivery');
+}
+
+// ── ABAS EXECUÇÃO ──
+function execTab(aba) {
+  ['ocorr','nf','hist'].forEach(function(a){
+    document.getElementById('exec-painel-'+a).style.display = a===aba?'block':'none';
+    var btn = document.getElementById('exec-tab-'+a);
+    if (btn) btn.classList.toggle('active', a===aba);
+  });
+  if (aba==='ocorr') renderListaOcorrencias();
+  if (aba==='nf')    renderListaNF();
+  if (aba==='hist')  renderTimeline();
+}
+
+// ── CAMPOS DINÂMICOS POR TIPO ──
+function toggleCamposOcorrencia() {
+  var tipo = document.getElementById('oc-tipo').value;
+  var notif = document.getElementById('oc-notif-wrap');
+  var receb = document.getElementById('oc-receb-wrap');
+  var multa = document.getElementById('oc-multa-wrap');
+  var label = document.getElementById('oc-motivo-label');
+
+  if (notif) notif.style.display = (tipo==='notificacao'||tipo==='advertencia') ? 'block':'none';
+  if (receb) receb.style.display = (tipo==='rec_provisorio'||tipo==='rec_definitivo'||tipo==='medicao') ? 'block':'none';
+  if (multa) multa.style.display = tipo==='multa' ? 'block':'none';
+
+  var labels = {
+    notificacao:'Motivo da notificação', advertencia:'Motivo da advertência',
+    multa:'Fundamentação da multa', rec_provisorio:'Observações do recebimento',
+    rec_definitivo:'Observações do recebimento', prorrogacao:'Justificativa da prorrogação',
+    glosa:'Motivo da glosa', reajuste:'Fundamentação do reajuste'
+  };
+  if (label) label.textContent = labels[tipo] || 'Descrição / Motivo';
+}
+
+// ── REGISTRAR OCORRÊNCIA ──
+async function registrarOcorrencia() {
+  var tipo  = document.getElementById('oc-tipo').value;
+  var data  = document.getElementById('oc-data').value;
+  var motivo= document.getElementById('oc-motivo').value.trim();
+  if (!tipo||!data) { showToast('Selecione o tipo e a data.','error'); return; }
+
+  var ocorrencia = {
+    contrato_id:    execContratoId,
+    tipo,
+    data_ocorrencia:data,
+    motivo,
+    // Notificação
+    notif_numero: (document.getElementById('oc-notif-num')||{value:''}).value.trim()||null,
+    notif_prazo:  (document.getElementById('oc-notif-prazo')||{value:''}).value||null,
+    // Recebimento
+    receb_resp:   (document.getElementById('oc-receb-resp')||{value:''}).value.trim()||null,
+    receb_nf:     (document.getElementById('oc-receb-nf')||{value:''}).value.trim()||null,
+    receb_valor:  parseFloat((document.getElementById('oc-receb-valor')||{value:0}).value)||null,
+    // Multa
+    multa_pct:    parseFloat((document.getElementById('oc-multa-pct')||{value:0}).value)||null,
+    multa_valor:  parseFloat((document.getElementById('oc-multa-valor')||{value:0}).value)||null,
+  };
+
+  try {
+    var r = await sb.from('exec_ocorrencias').insert(ocorrencia).select();
+    if (r.error) throw r.error;
+    // Limpar form
+    document.getElementById('oc-tipo').value  = '';
+    document.getElementById('oc-motivo').value= '';
+    toggleCamposOcorrencia();
+    await carregarExecucao(execContratoId);
+    renderListaOcorrencias();
+    showToast('Ocorrência registrada!');
+  } catch(e) { showToast('Erro ao registrar.','error'); console.error(e); }
+}
+
+async function excluirOcorrencia(id) {
+  if (!confirm('Excluir esta ocorrência?')) return;
+  await sb.from('exec_ocorrencias').delete().eq('id', id);
+  await carregarExecucao(execContratoId);
+  renderListaOcorrencias();
+  showToast('Excluída.');
+}
+
+function renderListaOcorrencias() {
+  var el   = document.getElementById('exec-lista-ocorr');
+  if (!el) return;
+  var lista = (OCORRENCIAS[execContratoId]||[]).slice().reverse();
+  if (!lista.length) {
+    el.innerHTML='<div style="text-align:center;padding:24px;color:#aaa;font-size:13px;border:1px dashed #ddd;border-radius:8px">Nenhuma ocorrência registrada.</div>';
+    return;
+  }
+  el.innerHTML = lista.map(function(oc){
+    var cor = OC_CORES[oc.tipo]||{bg:'#f3f4f6',cor:'#374151',icon:'ti-file-text'};
+    var extras = '';
+    if (oc.notif_numero) extras += '<div style="font-size:11px;margin-top:4px"><span style="color:#888">Nº Notif.:</span> <strong>'+oc.notif_numero+'</strong>'+(oc.notif_prazo?' · Prazo resposta: <strong>'+fmtDataBR(oc.notif_prazo)+'</strong>':'')+'</div>';
+    if (oc.receb_nf)    extras += '<div style="font-size:11px;margin-top:4px"><span style="color:#888">NF vinculada:</span> <strong>'+oc.receb_nf+'</strong>'+(oc.receb_valor?' · Valor: <strong>'+fmtMoeda(oc.receb_valor)+'</strong>':'')+(oc.receb_resp?' · Responsável: <strong>'+oc.receb_resp+'</strong>':'')+'</div>';
+    if (oc.multa_valor) extras += '<div style="font-size:11px;margin-top:4px;color:#c0392b"><i class="ti ti-currency-dollar"></i> Multa: <strong>'+fmtMoeda(oc.multa_valor)+'</strong>'+(oc.multa_pct?' ('+oc.multa_pct+'%)':'')+'</div>';
+    return '<div style="display:flex;gap:12px;padding:12px 14px;border:1px solid '+cor.bg+';border-radius:10px;margin-bottom:8px;background:'+cor.bg+'22;position:relative">'+
+      '<div style="width:36px;height:36px;border-radius:50%;background:'+cor.bg+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+
+        '<i class="ti '+cor.icon+'" style="color:'+cor.cor+';font-size:16px"></i>'+
+      '</div>'+
+      '<div style="flex:1">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
+          '<span style="background:'+cor.bg+';color:'+cor.cor+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">'+OC_LABELS[oc.tipo]+'</span>'+
+          '<span style="font-size:11px;color:#888">'+fmtDataBR(oc.data_ocorrencia)+'</span>'+
+        '</div>'+
+        (oc.motivo?'<div style="font-size:13px;color:#333;line-height:1.5">'+oc.motivo+'</div>':'')+
+        extras+
+      '</div>'+
+      '<button onclick="excluirOcorrencia(\''+oc.id+'\')" style="position:absolute;top:8px;right:8px;background:none;border:none;color:#ccc;cursor:pointer;font-size:12px" onmouseover="this.style.color=\'#c0392b\'" onmouseout="this.style.color=\'#ccc\'"><i class="ti ti-trash"></i></button>'+
+    '</div>';
+  }).join('');
+}
+
+// ── NOTAS FISCAIS ──
+async function registrarNF() {
+  var numero = document.getElementById('nf-numero').value.trim();
+  var data   = document.getElementById('nf-data').value;
+  var valor  = parseFloat(document.getElementById('nf-valor').value)||0;
+  if (!numero||!data) { showToast('Informe número e data da NF.','error'); return; }
+
+  var payload = {
+    contrato_id: execContratoId,
+    numero, data_emissao: data, valor,
+    descricao: document.getElementById('nf-desc').value.trim(),
+    status:    document.getElementById('nf-status').value,
+  };
+
+  try {
+    await sb.from('exec_notas_fiscais').insert(payload);
+    document.getElementById('nf-numero').value='';
+    document.getElementById('nf-valor').value='';
+    document.getElementById('nf-desc').value='';
+    document.getElementById('nf-data').value='';
+    await carregarExecucao(execContratoId);
+    renderListaNF();
+    showToast('Nota fiscal registrada!');
+  } catch(e) { showToast('Erro ao registrar NF.','error'); console.error(e); }
+}
+
+async function excluirNF(id) {
+  if (!confirm('Excluir esta nota fiscal?')) return;
+  await sb.from('exec_notas_fiscais').delete().eq('id', id);
+  await carregarExecucao(execContratoId);
+  renderListaNF();
+  showToast('Excluída.');
+}
+
+function renderListaNF() {
+  var lista = NOTAS_FISCAIS[execContratoId]||[];
+  var totalPago  = lista.filter(function(n){return n.status==='paga';}).reduce(function(s,n){return s+parseFloat(n.valor||0);},0);
+  var totalGeral = lista.reduce(function(s,n){return s+parseFloat(n.valor||0);},0);
+  var c = CONTRATOS.find(function(x){return x.id===execContratoId;});
+  var valorContrato = c ? parseFloat(c.valor||0) : 0;
+  var saldoRest = valorContrato - totalPago;
+
+  var resumo = document.getElementById('nf-resumo');
+  if (resumo && lista.length) {
+    resumo.innerHTML = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">'+
+      '<div style="background:#f0f9f4;border-radius:8px;padding:10px 12px;text-align:center"><div style="font-size:10px;color:#888">Total NFs</div><div style="font-weight:700;font-size:15px">'+lista.length+'</div></div>'+
+      '<div style="background:#dbeafe;border-radius:8px;padding:10px 12px;text-align:center"><div style="font-size:10px;color:#888">Total faturado</div><div style="font-weight:700;font-size:15px;color:#1e40af">'+fmtMoeda(totalGeral)+'</div></div>'+
+      '<div style="background:#dcfce7;border-radius:8px;padding:10px 12px;text-align:center"><div style="font-size:10px;color:#888">Total pago</div><div style="font-weight:700;font-size:15px;color:#166534">'+fmtMoeda(totalPago)+'</div></div>'+
+      '<div style="background:'+(saldoRest<0?'#fee2e2':'#f0f9f4')+';border-radius:8px;padding:10px 12px;text-align:center"><div style="font-size:10px;color:#888">Saldo contrato</div><div style="font-weight:700;font-size:15px;color:'+(saldoRest<0?'#c0392b':'#166534')+'">'+fmtMoeda(saldoRest)+'</div></div>'+
+    '</div>';
+  } else if (resumo) resumo.innerHTML='';
+
+  var el = document.getElementById('exec-lista-nf');
+  if (!el) return;
+  if (!lista.length) {
+    el.innerHTML='<div style="text-align:center;padding:24px;color:#aaa;font-size:13px;border:1px dashed #ddd;border-radius:8px">Nenhuma nota fiscal registrada.</div>';
+    return;
+  }
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse">'+
+    '<thead><tr style="background:#f8fafc">'+
+      '<th style="padding:8px 10px;text-align:left;font-size:10px;color:#888;font-weight:700;border-bottom:1px solid #e5e7eb">Nº NF</th>'+
+      '<th style="padding:8px 10px;text-align:left;font-size:10px;color:#888;font-weight:700;border-bottom:1px solid #e5e7eb">Data emissão</th>'+
+      '<th style="padding:8px 10px;text-align:left;font-size:10px;color:#888;font-weight:700;border-bottom:1px solid #e5e7eb">Descrição</th>'+
+      '<th style="padding:8px 10px;text-align:right;font-size:10px;color:#888;font-weight:700;border-bottom:1px solid #e5e7eb">Valor</th>'+
+      '<th style="padding:8px 10px;text-align:center;font-size:10px;color:#888;font-weight:700;border-bottom:1px solid #e5e7eb">Status</th>'+
+      '<th style="padding:8px 10px;border-bottom:1px solid #e5e7eb"></th>'+
+    '</tr></thead><tbody>'+
+    lista.map(function(n){
+      var sit = NF_STATUS_CORES[n.status]||{bg:'#f3f4f6',cor:'#374151'};
+      return '<tr style="border-bottom:1px solid #f0f0f0">'+
+        '<td style="padding:9px 10px;font-weight:600;color:#1a3a5c">'+n.numero+'</td>'+
+        '<td style="padding:9px 10px;font-size:12px;color:#888">'+fmtDataBR(n.data_emissao)+'</td>'+
+        '<td style="padding:9px 10px;font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(n.descricao||'—')+'</td>'+
+        '<td style="padding:9px 10px;text-align:right;font-weight:700">'+fmtMoeda(n.valor)+'</td>'+
+        '<td style="padding:9px 10px;text-align:center"><span style="background:'+sit.bg+';color:'+sit.cor+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">'+NF_STATUS_LABELS[n.status]+'</span></td>'+
+        '<td style="padding:9px 10px;text-align:right">'+
+          '<button class="btn-icon" onclick="excluirNF(\''+n.id+'\')" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
+        '</td>'+
+      '</tr>';
+    }).join('')+
+    '</tbody></table>';
+}
+
+// ── TIMELINE ──
+function renderTimeline() {
+  var el = document.getElementById('exec-timeline');
+  if (!el) return;
+  var c = CONTRATOS.find(function(x){return x.id===execContratoId;});
+
+  var eventos = [];
+  // Evento de criação do contrato
+  if (c && c.pub_data) eventos.push({ data:c.pub_data, tipo:'contrato', label:'Publicação do contrato', desc:c.numero+' — '+c.empresa, cor:'#1a3a5c', icon:'ti-file-check' });
+  if (c && c.vigencia_inicio) eventos.push({ data:c.vigencia_inicio, tipo:'vigencia', label:'Início da vigência', desc:'', cor:'#0a6640', icon:'ti-player-play' });
+  // Ocorrências
+  (OCORRENCIAS[execContratoId]||[]).forEach(function(oc){
+    var cor2 = OC_CORES[oc.tipo]||{cor:'#374151',icon:'ti-file-text'};
+    eventos.push({ data:oc.data_ocorrencia, tipo:oc.tipo, label:OC_LABELS[oc.tipo], desc:oc.motivo||(oc.notif_numero?'Nº '+oc.notif_numero:''), cor:cor2.cor, icon:cor2.icon });
+  });
+  // NFs
+  (NOTAS_FISCAIS[execContratoId]||[]).forEach(function(nf){
+    eventos.push({ data:nf.data_emissao, tipo:'nf', label:'Nota Fiscal '+nf.numero, desc:fmtMoeda(nf.valor)+' · '+NF_STATUS_LABELS[nf.status], cor:'#0369a1', icon:'ti-receipt' });
+  });
+  // Datas futuras
+  if (c && c.prazo_entrega) eventos.push({ data:c.prazo_entrega, tipo:'prazo', label:'Prazo de entrega', desc:'Data limite para entrega do objeto', cor:'#d97706', icon:'ti-truck-delivery', futuro:true });
+  if (c && c.vigencia_fim)  eventos.push({ data:c.vigencia_fim,  tipo:'fim',   label:'Fim da vigência',   desc:'', cor:'#c0392b', icon:'ti-player-stop', futuro:true });
+
+  // Ordenar por data
+  eventos.sort(function(a,b){ return a.data > b.data ? 1 : -1; });
+
+  if (!eventos.length) { el.innerHTML='<div style="text-align:center;padding:24px;color:#aaa;font-size:13px">Nenhum evento registrado.</div>'; return; }
+
+  var hoje = new Date().toISOString().split('T')[0];
+  el.innerHTML = '<div style="position:relative;padding-left:28px">'+
+    '<div style="position:absolute;left:10px;top:0;bottom:0;width:2px;background:#e5e7eb"></div>'+
+    eventos.map(function(ev){
+      var passado = ev.data <= hoje;
+      return '<div style="position:relative;margin-bottom:16px">'+
+        '<div style="position:absolute;left:-22px;top:2px;width:12px;height:12px;border-radius:50%;background:'+(passado?ev.cor:'#e5e7eb')+';border:2px solid '+(passado?ev.cor:'#d1d5db')+'"></div>'+
+        '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;'+(ev.futuro?'opacity:.7':'')+'">'+
+          '<div style="display:flex;align-items:center;gap:8px">'+
+            '<i class="ti '+ev.icon+'" style="color:'+ev.cor+';font-size:15px"></i>'+
+            '<span style="font-weight:700;font-size:13px;color:'+ev.cor+'">'+ev.label+'</span>'+
+            '<span style="font-size:11px;color:#888;margin-left:auto">'+fmtDataBR(ev.data)+'</span>'+
+            (ev.futuro?'<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px">Futuro</span>':'')+
+          '</div>'+
+          (ev.desc?'<div style="font-size:12px;color:#555;margin-top:4px;padding-left:23px">'+ev.desc+'</div>':'')+
+        '</div>'+
+      '</div>';
+    }).join('')+
+  '</div>';
+}
+
+// ── PDF EXECUÇÃO ──
+function exportarExecucaoPDF() {
+  var c = CONTRATOS.find(function(x){return x.id===execContratoId;});
+  if (!c) return;
+  var dt  = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  var ocs = OCORRENCIAS[execContratoId]||[];
+  var nfs = NOTAS_FISCAIS[execContratoId]||[];
+  var totalNF = nfs.reduce(function(s,n){return s+parseFloat(n.valor||0);},0);
+
+  var linhasOC = ocs.map(function(oc){
+    var cor2 = OC_CORES[oc.tipo]||{bg:'#f3f4f6',cor:'#374151'};
+    return '<tr>'+
+      '<td style="padding:6px 8px;font-size:11px">'+fmtDataBR(oc.data_ocorrencia)+'</td>'+
+      '<td style="padding:6px 8px"><span style="background:'+cor2.bg+';color:'+cor2.cor+';padding:1px 7px;border-radius:10px;font-size:9px;font-weight:700">'+OC_LABELS[oc.tipo]+'</span></td>'+
+      '<td style="padding:6px 8px;font-size:11px">'+(oc.motivo||'—')+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px">'+(oc.notif_numero||oc.receb_nf||'—')+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var linhasNF = nfs.map(function(n){
+    var sit = NF_STATUS_CORES[n.status]||{bg:'#f3f4f6',cor:'#374151'};
+    return '<tr>'+
+      '<td style="padding:6px 8px;font-size:11px;font-weight:600">'+n.numero+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px">'+fmtDataBR(n.data_emissao)+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px">'+(n.descricao||'—')+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700">'+fmtMoeda(n.valor)+'</td>'+
+      '<td style="padding:6px 8px"><span style="background:'+sit.bg+';color:'+sit.cor+';padding:1px 7px;border-radius:10px;font-size:9px;font-weight:700">'+NF_STATUS_LABELS[n.status]+'</span></td>'+
+    '</tr>';
+  }).join('');
+
+  var win = window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Execução</title>'+
+    '<style>body{font-family:Arial,sans-serif;margin:0;padding:20px;font-size:12px}@media print{@page{size:A4;margin:12mm}}'+
+    'table{width:100%;border-collapse:collapse;margin-top:8px}th{background:#1a3a5c;color:#fff;padding:7px;text-align:left;font-size:10px;font-weight:700}'+
+    'td{border-bottom:1px solid #f0f0f0}.sec{margin-top:20px;font-size:12px;font-weight:700;color:#1a3a5c;border-bottom:2px solid #1a3a5c;padding-bottom:4px;margin-bottom:8px}'+
+    '.card-info{background:#f8fafc;border-radius:6px;padding:8px 12px;margin-bottom:4px;font-size:11px}</style></head><body>'+
+    '<div style="border-bottom:3px solid #1a3a5c;padding-bottom:10px;margin-bottom:14px">'+
+      '<div style="font-size:10px;color:#666;font-weight:700;letter-spacing:1px;text-transform:uppercase">Estado do Amapá — SEJUSP / FUNSEP</div>'+
+      '<div style="font-size:16px;font-weight:700;color:#1a3a5c">Relatório de Execução Contratual</div>'+
+      '<div style="font-size:11px;color:#888">Emitido em: '+dt+'</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">'+
+      '<div class="card-info"><strong>Contrato:</strong> '+(c.numero||'—')+'</div>'+
+      '<div class="card-info"><strong>Empresa:</strong> '+c.empresa+'</div>'+
+      '<div class="card-info"><strong>Órgão:</strong> '+c.orgao+'</div>'+
+      '<div class="card-info"><strong>Valor:</strong> '+fmtMoeda(c.valor)+'</div>'+
+      '<div class="card-info"><strong>Vigência:</strong> '+fmtDataBR(c.vigencia_inicio)+' a '+fmtDataBR(c.vigencia_fim)+'</div>'+
+      '<div class="card-info"><strong>Prazo entrega:</strong> '+fmtDataBR(c.prazo_entrega||null)+'</div>'+
+    '</div>'+
+    (ocs.length?'<div class="sec">Ocorrências ('+ocs.length+')</div>'+
+    '<table><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Referência</th></tr></thead><tbody>'+linhasOC+'</tbody></table>':'')+
+    (nfs.length?'<div class="sec">Notas Fiscais ('+nfs.length+') — Total: '+fmtMoeda(totalNF)+'</div>'+
+    '<table><thead><tr><th>Nº NF</th><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Status</th></tr></thead><tbody>'+linhasNF+'</tbody></table>':'')+
+    '<div style="margin-top:20px;font-size:9px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:6px">'+
+    'Sistema de Controle de Processos — SEJUSP/FUNSEP · '+dt+'</div></body></html>');
+  win.document.close();
+  setTimeout(function(){ win.print(); }, 600);
 }
 
 verificarSessao();
