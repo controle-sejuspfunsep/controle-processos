@@ -2495,6 +2495,20 @@ async function excluirEmpenhoFin(id) {
 // UNIDADE DE CONTRATOS E CONVÊNIOS
 // ════════════════════════════════════════════════
 
+function toggleSenha(id, btn) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (el.type === 'password') {
+    el.type = 'text';
+    btn.innerHTML = '<i class="ti ti-eye-off"></i>';
+    btn.style.color = '#1a3a5c';
+  } else {
+    el.type = 'password';
+    btn.innerHTML = '<i class="ti ti-eye"></i>';
+    btn.style.color = '#aaa';
+  }
+}
+
 var CONTRATOS = [];
 var aditivosTemp = [];
 
