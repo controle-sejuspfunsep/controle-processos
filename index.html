@@ -343,7 +343,21 @@ tr:hover td{background:#f8fafc}
           <div class="sec-label">3. Dados Financeiros e Documentos</div>
           <div class="form-grid">
             <div class="form-group"><label>Dotação Orçamentária</label><input type="text" id="f-dotacao" placeholder="Ex: 06.181.0015.2041"/></div>
-            <div class="form-group"><label>Nota de Empenho</label><input type="text" id="f-empenho" placeholder="Ex: NE 2024/001234"/></div>
+            <div class="form-group full">
+              <label>Valor total do processo (R$)</label>
+              <input type="number" step="0.01" class="form-input" id="f-valor-total" placeholder="Ex: 150000,00" oninput="atualizarSaldoEmpenhos()">
+            </div>
+            <div class="form-group full" style="background:#f8fafc;border:1px solid #e0e0e0;border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <label style="margin:0">Empenhos do processo</label>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="adicionarEmpenhoProcesso()" style="font-size:12px;padding:5px 10px;background:#1a3a5c;color:#fff;border:none;border-radius:6px;cursor:pointer"><i class="ti ti-plus"></i> Adicionar empenho</button>
+              </div>
+              <div id="lista-empenhos-processo"></div>
+              <div id="saldo-empenhos-wrap" style="display:none;margin-top:10px;padding:8px 12px;border-radius:8px;font-size:12px;display:flex;gap:16px">
+                <span>Total empenhado: <strong id="total-empenhado-proc">R$ 0</strong></span>
+                <span>Saldo disponível: <strong id="saldo-disponivel-proc" style="color:#0a6640">R$ 0</strong></span>
+              </div>
+            </div>
             <div class="form-group"><label>Número do Contrato</label><input type="text" id="f-contrato" placeholder="Ex: CT 001/2024"/></div>
             <div class="form-group"><label>Número da Portaria</label><input type="text" id="f-portaria" placeholder="Ex: Portaria nº 001/2024"/></div>
           </div>
@@ -1562,6 +1576,13 @@ function selectStatus(s) {
 
 function resetForm() {
   editId=null; selectedOrgao=''; selectedStatus='';
+  empenhosProcessoTemp = [];
+  var lep = document.getElementById('lista-empenhos-processo');
+  if (lep) lep.innerHTML='';
+  var ftot = document.getElementById('f-valor-total');
+  if (ftot) ftot.value='';
+  var swrap = document.getElementById('saldo-empenhos-wrap');
+  if (swrap) swrap.style.display='none';
   document.getElementById('form-title').textContent = 'Novo Processo';
   ['f-oficio','f-data-oficio','f-siga','f-prodoc','f-objeto','f-dotacao','f-empenho','f-contrato','f-portaria'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
@@ -1579,21 +1600,31 @@ async function salvarProcesso() {
   if (!document.getElementById('f-objeto').value.trim()) { showToast('Informe a descrição do objeto.','error'); return; }
   if (!selectedStatus) { showToast('Selecione o status do processo.','error'); return; }
 
+  // Validar empenhos
+  var valorTotal = parseFloat(document.getElementById('f-valor-total').value)||0;
+  var totalEmp   = empenhosProcessoTemp.reduce(function(s,e){return s+(parseFloat(e.valor)||0);},0);
+  if (valorTotal > 0 && totalEmp > valorTotal) {
+    showToast('Total empenhado ('+fmtMoeda(totalEmp)+') ultrapassa o valor total do processo ('+fmtMoeda(valorTotal)+').','error');
+    return;
+  }
+
   var payload = {
-    orgao:      selectedOrgao,
-    oficio:     document.getElementById('f-oficio').value,
-    data_oficio:document.getElementById('f-data-oficio').value || null,
-    siga:       document.getElementById('f-siga').value,
-    prodoc:     document.getElementById('f-prodoc').value,
-    objeto:     document.getElementById('f-objeto').value,
-    tipo:       document.getElementById('f-tipo').value,
-    base_legal: document.getElementById('f-base').value,
-    status:     selectedStatus,
-    dotacao:    document.getElementById('f-dotacao').value,
-    empenho:    document.getElementById('f-empenho').value,
-    contrato:   document.getElementById('f-contrato').value,
-    portaria:   document.getElementById('f-portaria').value,
-    criado_por: PERFIL ? PERFIL.nome : USER.email,
+    orgao:       selectedOrgao,
+    oficio:      document.getElementById('f-oficio').value,
+    data_oficio: document.getElementById('f-data-oficio').value || null,
+    siga:        document.getElementById('f-siga').value,
+    prodoc:      document.getElementById('f-prodoc').value,
+    objeto:      document.getElementById('f-objeto').value,
+    tipo:        document.getElementById('f-tipo').value,
+    base_legal:  document.getElementById('f-base').value,
+    status:      selectedStatus,
+    dotacao:     document.getElementById('f-dotacao').value,
+    empenho:     empenhosProcessoTemp.map(function(e){return e.numero;}).join(', '),
+    contrato:    document.getElementById('f-contrato').value,
+    portaria:    document.getElementById('f-portaria').value,
+    criado_por:  PERFIL ? PERFIL.nome : USER.email,
+    valor_total: valorTotal,
+    empenhos:    empenhosProcessoTemp,
   };
 
   try {
@@ -1616,6 +1647,9 @@ function editarProcesso(id) {
   if (!p) return;
   editId = id;
   document.getElementById('form-title').textContent = 'Editar Processo';
+  empenhosProcessoTemp = p.empenhos ? JSON.parse(JSON.stringify(p.empenhos)) : [];
+  var ftot = document.getElementById('f-valor-total');
+  if (ftot) ftot.value = p.valor_total||'';
   selectOrgao(p.orgao);
   document.getElementById('f-oficio').value      = p.oficio||'';
   document.getElementById('f-data-oficio').value = p.data_oficio||'';
@@ -1629,6 +1663,11 @@ function editarProcesso(id) {
   document.getElementById('f-empenho').value     = p.empenho||'';
   document.getElementById('f-contrato').value    = p.contrato||'';
   document.getElementById('f-portaria').value    = p.portaria||'';
+  // Renderizar empenhos carregados
+  setTimeout(function(){
+    renderEmpenhosProcesso();
+    atualizarSaldoEmpenhos();
+  }, 100);
   showPage('novo', document.querySelectorAll('.nav-item')[2]);
 }
 
@@ -4367,6 +4406,168 @@ function exportarExecucaoPDF() {
     'Sistema de Controle de Processos — SEJUSP/FUNSEP · '+dt+'</div></body></html>');
   win.document.close();
   setTimeout(function(){ win.print(); }, 600);
+}
+
+// ════════════════════════════════════════════════
+// EMPENHOS MÚLTIPLOS NO PROCESSO
+// ════════════════════════════════════════════════
+var empenhosProcessoTemp = [];
+
+function adicionarEmpenhoProcesso() {
+  empenhosProcessoTemp.push({ numero:'', valor:0, conta_id:'', eixo:'', acao:'', nd:'', obs:'' });
+  renderEmpenhosProcesso();
+}
+
+function removerEmpenhoProcesso(idx) {
+  empenhosProcessoTemp.splice(idx, 1);
+  renderEmpenhosProcesso();
+}
+
+function atualizarSaldoEmpenhos() {
+  var valorTotal = parseFloat(document.getElementById('f-valor-total').value)||0;
+  var totalEmp   = empenhosProcessoTemp.reduce(function(s,e){return s+(parseFloat(e.valor)||0);},0);
+  var saldo      = valorTotal - totalEmp;
+  var wrap       = document.getElementById('saldo-empenhos-wrap');
+  var totEl      = document.getElementById('total-empenhado-proc');
+  var saldoEl    = document.getElementById('saldo-disponivel-proc');
+
+  if (wrap && (valorTotal > 0 || totalEmp > 0)) {
+    wrap.style.display = 'flex';
+    if (totEl)   totEl.textContent   = fmtMoeda(totalEmp);
+    if (saldoEl) {
+      saldoEl.textContent = fmtMoeda(saldo);
+      saldoEl.style.color = saldo < 0 ? '#c0392b' : '#0a6640';
+    }
+  }
+}
+
+function renderEmpenhosProcesso() {
+  var lista  = document.getElementById('lista-empenhos-processo');
+  if (!lista) return;
+  var isFunsep = selectedOrgao === 'FUNSEP';
+
+  if (!empenhosProcessoTemp.length) {
+    lista.innerHTML = '<div style="text-align:center;padding:14px;color:#aaa;font-size:12px;border:1px dashed #ddd;border-radius:8px">Nenhum empenho adicionado. Clique em "Adicionar empenho".</div>';
+    atualizarSaldoEmpenhos();
+    return;
+  }
+
+  lista.innerHTML = empenhosProcessoTemp.map(function(e, i){
+    // Opções de conta (apenas FUNSEP)
+    var contaOpts = '<option value="">Selecionar conta...</option>';
+    if (isFunsep && typeof CONTAS_FIN !== 'undefined') {
+      var empTotal_c = function(cId){ return (typeof calcularSaldoUtilizar==='function') ? calcularSaldoUtilizar(cId) : 0; };
+      CONTAS_FIN.forEach(function(c){
+        var saldoDisp = parseFloat(c.saldo_conta||0) - empTotal_c(c.id);
+        var selected  = e.conta_id === c.id ? ' selected' : '';
+        contaOpts += '<option value="'+c.id+'"'+selected+'>'+c.numero+' | '+c.eixo+' | ND '+c.nd+' | '+fmtMoeda(saldoDisp)+'</option>';
+      });
+    }
+
+    return '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin-bottom:8px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+        '<span style="font-size:12px;font-weight:700;color:#1a3a5c">Empenho '+(i+1)+'</span>'+
+        '<button type="button" onclick="removerEmpenhoProcesso('+i+')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:12px"><i class="ti ti-trash"></i> Remover</button>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr'+(isFunsep?' 1fr':'')+(isFunsep?' 1fr':'')+';gap:10px">'+
+        '<div class="form-group" style="margin:0"><label>Nº do empenho</label>'+
+          '<input type="text" class="form-input" value="'+(e.numero||'')+'" placeholder="Ex: 2024NE00123" oninput="empenhosProcessoTemp['+i+'].numero=this.value"></div>'+
+        '<div class="form-group" style="margin:0"><label>Valor (R$)</label>'+
+          '<input type="number" step="0.01" class="form-input" value="'+(e.valor||'')+'" placeholder="0,00" oninput="empenhosProcessoTemp['+i+'].valor=parseFloat(this.value)||0;atualizarSaldoEmpenhos();verificarLimiteEmpenho('+i+')"></div>'+
+        (isFunsep ?
+          '<div class="form-group" style="margin:0;grid-column:1/-1"><label>Conta orçamentária (FUNSEP) — baixa automática no Núcleo Financeiro</label>'+
+            '<select class="form-input" onchange="empenhosProcessoTemp['+i+'].conta_id=this.value;preencherDadosConta('+i+',this.value)">'+contaOpts+'</select></div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;grid-column:1/-1" id="emp-proc-detalhes-'+i+'" style="'+(e.conta_id?'':'display:none')+'">'+
+            '<div class="form-group" style="margin:0"><label>Eixo</label><input type="text" class="form-input" id="ep-eixo-'+i+'" value="'+(e.eixo||'')+'" readonly style="background:#f0f0f0"></div>'+
+            '<div class="form-group" style="margin:0"><label>Ação</label><input type="text" class="form-input" id="ep-acao-'+i+'" value="'+(e.acao||'')+'" readonly style="background:#f0f0f0"></div>'+
+            '<div class="form-group" style="margin:0"><label>ND</label><input type="text" class="form-input" id="ep-nd-'+i+'" value="'+(e.nd||'')+'" readonly style="background:#f0f0f0"></div>'+
+          '</div>'
+        : '') +
+        '<div class="form-group" style="margin:0;grid-column:1/-1"><label>Observação</label>'+
+          '<input type="text" class="form-input" value="'+(e.obs||'')+'" placeholder="Opcional" oninput="empenhosProcessoTemp['+i+'].obs=this.value"></div>'+
+      '</div>'+
+      '<div id="ep-alerta-'+i+'" style="display:none;margin-top:6px;background:#fee2e2;border-radius:6px;padding:6px 10px;font-size:11px;color:#c0392b">'+
+        '<i class="ti ti-alert-triangle"></i> Valor excede o saldo disponível desta conta!'+
+      '</div>'+
+    '</div>';
+  }).join('');
+
+  atualizarSaldoEmpenhos();
+}
+
+function preencherDadosConta(idx, contaId) {
+  empenhosProcessoTemp[idx].conta_id = contaId;
+  if (!contaId || typeof CONTAS_FIN === 'undefined') return;
+  var c = CONTAS_FIN.find(function(x){return x.id===contaId;});
+  if (!c) return;
+  empenhosProcessoTemp[idx].eixo = c.eixo||'';
+  empenhosProcessoTemp[idx].acao = c.acao||'';
+  empenhosProcessoTemp[idx].nd   = c.nd||'';
+  var eixoEl = document.getElementById('ep-eixo-'+idx);
+  var acaoEl = document.getElementById('ep-acao-'+idx);
+  var ndEl   = document.getElementById('ep-nd-'+idx);
+  if (eixoEl) eixoEl.value = c.eixo||'';
+  if (acaoEl) acaoEl.value = c.acao||'';
+  if (ndEl)   ndEl.value   = c.nd||'';
+  verificarLimiteEmpenho(idx);
+}
+
+function verificarLimiteEmpenho(idx) {
+  var e       = empenhosProcessoTemp[idx];
+  var alerta  = document.getElementById('ep-alerta-'+idx);
+  if (!alerta || !e.conta_id || typeof calcularSaldoUtilizar === 'undefined') return;
+  var c       = (typeof CONTAS_FIN!=='undefined') ? CONTAS_FIN.find(function(x){return x.id===e.conta_id;}) : null;
+  if (!c) { alerta.style.display='none'; return; }
+  var empTotal = calcularSaldoUtilizar(c.id);
+  var saldoDisp = parseFloat(c.saldo_conta||0) - empTotal;
+  alerta.style.display = (parseFloat(e.valor)||0) > saldoDisp ? 'block' : 'none';
+}
+
+// ── BAIXA AUTOMÁTICA NA CONTA AO SALVAR PROCESSO ──
+async function baixarEmpenhosFunsep(processo, isEdit, processoAnterior) {
+  if (processo.orgao !== 'FUNSEP') return;
+  var empenhos = processo.empenhos||[];
+
+  for (var i=0; i<empenhos.length; i++) {
+    var emp = empenhos[i];
+    if (!emp.conta_id || !emp.valor || !emp.numero) continue;
+
+    // Verificar se já existe esse empenho (edição)
+    var jaExiste = false;
+    if (isEdit && processoAnterior && processoAnterior.empenhos) {
+      jaExiste = processoAnterior.empenhos.some(function(e){ return e.numero===emp.numero && e.conta_id===emp.conta_id; });
+    }
+    if (jaExiste) continue; // não baixa de novo se já existia
+
+    try {
+      // Registrar na tabela fin_empenhos com referência ao processo
+      await sb.from('fin_empenhos').insert({
+        numero:        emp.numero,
+        data_empenho:  new Date().toISOString().split('T')[0],
+        conta_id:      emp.conta_id,
+        processo_siga: processo.siga||'',
+        valor:         parseFloat(emp.valor)||0,
+        situacao:      'ativo',
+        obs:           'Vinculado ao processo '+( processo.siga||'' )+' — '+( processo.objeto||'' ).substring(0,60),
+      });
+    } catch(e) { console.warn('Erro ao baixar empenho na conta:', e); }
+  }
+
+  // Se é edição, remover empenhos que foram excluídos
+  if (isEdit && processoAnterior && processoAnterior.empenhos) {
+    for (var j=0; j<processoAnterior.empenhos.length; j++) {
+      var empAnt = processoAnterior.empenhos[j];
+      if (!empAnt.conta_id || !empAnt.numero) continue;
+      var aindaExiste = empenhos.some(function(e){ return e.numero===empAnt.numero && e.conta_id===empAnt.conta_id; });
+      if (!aindaExiste) {
+        // Empenho foi removido — anular na fin_empenhos
+        try {
+          await sb.from('fin_empenhos').update({situacao:'anulado'})
+            .eq('numero', empAnt.numero).eq('conta_id', empAnt.conta_id);
+        } catch(e) { console.warn('Erro ao anular empenho:', e); }
+      }
+    }
+  }
 }
 
 verificarSessao();
