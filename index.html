@@ -91,6 +91,18 @@ tr:hover td{background:#f8fafc}
 #toast{display:none;position:fixed;bottom:28px;right:28px;padding:13px 22px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15)}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
 .modal-overlay.open{display:flex}
+.ha-tab-btn{padding:9px 16px;border:none;background:none;font-size:12px;font-weight:500;color:#888;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s}
+.ha-tab-btn.active{color:#1a3a5c;font-weight:700;border-bottom:3px solid #1a3a5c}
+.ha-tab-btn:hover{color:#1a3a5c;background:#f5f7fa}
+.status-opt{padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #ddd;background:#f9f9f9;color:#666;text-align:center;transition:all .15s}
+.status-opt:hover{border-color:#1a3a5c;color:#1a3a5c}
+.sel-planejamento{border-color:#3b82f6;background:#dbeafe;color:#1e40af}
+.sel-analise{border-color:#f59e0b;background:#fef3c7;color:#92400e}
+.sel-execucao{border-color:#8b5cf6;background:#ede9fe;color:#6d28d9}
+.sel-pagamento{border-color:#ec4899;background:#fce7f3;color:#9d174d}
+.sel-concluido{border-color:#22c55e;background:#dcfce7;color:#166534}
+.sel-cancelado{border-color:#9ca3af;background:#f3f4f6;color:#374151}
+.modal-overlay.open{display:flex}
 .modal-box{background:#fff;border-radius:14px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
 .modal-header{padding:22px 22px 0;display:flex;align-items:flex-start;justify-content:space-between}
 .modal-title{font-size:18px;font-weight:700;color:#1a3a5c}
@@ -184,6 +196,8 @@ tr:hover td{background:#f8fafc}
       <div class="nav-item" onclick="showPage('fluxograma',this)"><i class="ti ti-git-branch"></i> Fluxograma</div>
       <div class="nav-item" onclick="showPage('financeiro',this)"><i class="ti ti-building-bank"></i> Núcleo Financeiro</div>
       <div class="nav-item" onclick="showPage('contratos',this)"><i class="ti ti-file-contract"></i> 📋 Núcleo de Contratos <span id="badge-contratos" style="display:none;background:#c0392b;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px">!</span></div>
+      <div class="nav-item" onclick="showPage('hora-aula',this)"><i class="ti ti-school"></i> 🎓 Núcleo Administrativo</div>
+      <div class="nav-item" onclick="showPage('pessoal',this)"><i class="ti ti-id-badge"></i> 👤 Núcleo de Pessoal</div>
       <div class="nav-item" id="nav-usuarios" style="display:none" onclick="showPage('usuarios',this)"><i class="ti ti-users"></i> Usuários</div>
     </div>
     <div class="content">
@@ -508,6 +522,114 @@ tr:hover td{background:#f8fafc}
       </div>
 
 
+
+      <!-- NÚCLEO ADMINISTRATIVO — HORA-AULA -->
+      <div id="page-hora-aula" class="page">
+        <div class="section-header">
+          <span class="section-title">🎓 Núcleo Administrativo — Processos de Hora-Aula</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn-secondary" onclick="exportarHoraAulaExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+            <button class="btn-secondary" onclick="exportarHoraAulaPDF()"><i class="ti ti-file-type-pdf"></i> PDF</button>
+            <button class="btn-primary" onclick="abrirModalCurso()"><i class="ti ti-plus"></i> Novo processo</button>
+          </div>
+        </div>
+
+        <!-- Alertas de prazo -->
+        <div id="ha-alertas-wrap" style="display:none;margin-bottom:16px">
+          <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:10px;padding:14px 16px">
+            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:8px"><i class="ti ti-clock-exclamation"></i> Processos com prazos críticos</div>
+            <div id="ha-alertas-lista"></div>
+          </div>
+        </div>
+
+        <!-- Cards dashboard -->
+        <div class="metrics" id="ha-metrics" style="grid-template-columns:repeat(5,1fr);margin-bottom:18px"></div>
+
+        <!-- Gráficos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+          <div class="card" style="padding:16px">
+            <div class="sec-label">Status dos processos</div>
+            <canvas id="ha-chart-status" style="max-height:180px"></canvas>
+          </div>
+          <div class="card" style="padding:16px">
+            <div class="sec-label">Valor total por fase</div>
+            <canvas id="ha-chart-valor" style="max-height:180px"></canvas>
+          </div>
+        </div>
+
+        <!-- Filtros -->
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <input type="text" id="ha-busca" placeholder="Buscar curso..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:240px" oninput="renderTabelaHoraAula()">
+          <select id="ha-filtro-status" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaHoraAula()">
+            <option value="">Todos os status</option>
+            <option value="planejamento">Planejamento</option>
+            <option value="analise">Em análise</option>
+            <option value="execucao">Em execução</option>
+            <option value="pagamento">Aguardando pagamento</option>
+            <option value="concluido">Concluído</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+          <select id="ha-filtro-eixo" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaHoraAula()">
+            <option value="">Todos os eixos</option>
+            <option>EVC</option><option>VPSP</option><option>FISP</option>
+            <option>PNSE</option><option>MQVPSP</option><option>RMV</option><option>EVM</option>
+          </select>
+        </div>
+
+        <div class="card" style="padding:0">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Curso / Capacitação</th><th>Eixo</th><th>Fase</th>
+                <th>Início</th><th>CH Total</th><th>Profissionais</th>
+                <th style="text-align:right">Valor estimado</th><th>Status</th><th></th>
+              </tr></thead>
+              <tbody id="tb-hora-aula"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- NÚCLEO DE PESSOAL — DIÁRIAS -->
+      <div id="page-pessoal" class="page">
+        <div class="section-header">
+          <span class="section-title">👤 Núcleo de Pessoal — Diárias e Passagens</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn-secondary" onclick="exportarDiariasExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+            <button class="btn-primary" onclick="abrirModalDiaria()"><i class="ti ti-plus"></i> Nova diária</button>
+          </div>
+        </div>
+
+        <!-- Cards -->
+        <div class="metrics" id="ps-metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px"></div>
+
+        <!-- Filtros -->
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <input type="text" id="ps-busca" placeholder="Buscar viajante, destino..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:240px" oninput="renderTabelaDiarias()">
+          <select id="ps-filtro-status" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaDiarias()">
+            <option value="">Todos</option>
+            <option value="solicitado">Solicitado</option>
+            <option value="autorizado">Autorizado</option>
+            <option value="em_viagem">Em viagem</option>
+            <option value="concluido">Concluído</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+
+        <div class="card" style="padding:0">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Viajante</th><th>Função</th><th>Curso vinculado</th>
+                <th>Origem → Destino</th><th>Período</th><th>Diárias</th>
+                <th style="text-align:right">Valor total</th><th>Status</th><th></th>
+              </tr></thead>
+              <tbody id="tb-diarias"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- FLUXOGRAMA -->
       <div id="page-fluxograma" class="page">
         <div class="section-header">
@@ -760,6 +882,204 @@ tr:hover td{background:#f8fafc}
           <div class="modal-body" id="m-cont-det-body"></div>
           <div class="modal-footer">
             <button class="btn-secondary" onclick="fecharModal('m-cont-detalhe')">Fechar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL CURSO/HORA-AULA -->
+      <div class="modal-overlay" id="m-curso">
+        <div class="modal-box" style="width:720px;max-height:92vh">
+          <div class="modal-header">
+            <div><div class="modal-title" id="m-curso-title">Novo processo de hora-aula</div>
+            <div class="modal-sub">IN 001/2025 · Portaria SENASP 63/2012</div></div>
+            <button class="modal-close" onclick="fecharModal('m-curso')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="curso-edit-id">
+
+            <!-- Abas internas do processo -->
+            <div style="display:flex;gap:0;border-bottom:2px solid #e0e0e0;margin-bottom:16px">
+              <button class="ha-tab-btn active" id="ha-tab-dados" onclick="haTab('dados')">📋 Dados do curso</button>
+              <button class="ha-tab-btn" id="ha-tab-prof" onclick="haTab('prof')">👥 Profissionais</button>
+              <button class="ha-tab-btn" id="ha-tab-docs" onclick="haTab('docs')">📄 Documentos</button>
+              <button class="ha-tab-btn" id="ha-tab-calc" onclick="haTab('calc')">💰 Cálculo</button>
+            </div>
+
+            <!-- ABA DADOS -->
+            <div id="ha-painel-dados">
+              <div class="sec-label" style="margin-bottom:10px">Identificação do curso</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+                <div class="form-group full"><label>Nome do curso / capacitação</label>
+                  <input type="text" class="form-input" id="curso-nome" placeholder="Ex: Curso de Gestão Operacional"></div>
+                <div class="form-group"><label>Eixo temático</label>
+                  <select class="form-input" id="curso-eixo">
+                    <option value="">Selecione...</option>
+                    <option>EVC</option><option>VPSP</option><option>FISP</option>
+                    <option>PNSE</option><option>MQVPSP</option><option>RMV</option><option>EVM</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Ação do plano</label>
+                  <select class="form-input" id="curso-acao">
+                    <option value="2255">2255 — RMV/EVM/FISPSP/PNSE/ECV</option>
+                    <option value="2275">2275 — MQVPSP/VPSP</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Ano de repasse</label>
+                  <select class="form-input" id="curso-ano-repasse">
+                    <option value="">Selecione...</option>
+                    <option>2019</option><option>2020</option><option>2021</option><option>2022</option>
+                    <option>2023</option><option>2024</option><option>2025</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Modalidade</label>
+                  <select class="form-input" id="curso-modalidade">
+                    <option value="presencial">Presencial</option>
+                    <option value="ead">EAD</option>
+                    <option value="hibrido">Híbrido</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Carga horária total (h)</label>
+                  <input type="number" class="form-input" id="curso-ch" placeholder="Ex: 80" oninput="recalcularHoraAula()"></div>
+                <div class="form-group"><label>Data prevista de início</label>
+                  <input type="date" class="form-input" id="curso-inicio" oninput="verificarPrazosHA()"></div>
+                <div class="form-group"><label>Data prevista de término</label>
+                  <input type="date" class="form-input" id="curso-fim"></div>
+                <div class="form-group"><label>Nº de turmas</label>
+                  <input type="number" class="form-input" id="curso-turmas" value="1" min="1" oninput="recalcularHoraAula()"></div>
+                <div class="form-group"><label>Nº de alunos por turma</label>
+                  <input type="number" class="form-input" id="curso-alunos" placeholder="25-40 (presencial)"></div>
+                <div class="form-group full"><label>Órgão requisitante</label>
+                  <input type="text" class="form-input" id="curso-orgao-req" placeholder="Ex: PCAP, PMAP, CBMAP..."></div>
+                <div class="form-group full"><label>Observações</label>
+                  <textarea class="form-input" id="curso-obs" style="min-height:50px" placeholder="Informações adicionais..."></textarea></div>
+              </div>
+
+              <!-- Alerta de prazo -->
+              <div id="ha-alerta-prazo" style="display:none;background:#fee2e2;border-radius:8px;padding:10px 14px;font-size:12px;color:#c0392b;margin-bottom:10px">
+                <i class="ti ti-alert-triangle"></i> <span id="ha-alerta-prazo-msg"></span>
+              </div>
+
+              <!-- Status do processo -->
+              <div class="sec-label" style="margin-bottom:10px">Status do processo</div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                <div onclick="setCursoStatus('planejamento')" id="cs-planejamento" class="status-opt sel-planejamento" data-s="planejamento">📋 Planejamento</div>
+                <div onclick="setCursoStatus('analise')" id="cs-analise" class="status-opt" data-s="analise">🔍 Em análise</div>
+                <div onclick="setCursoStatus('execucao')" id="cs-execucao" class="status-opt" data-s="execucao">▶️ Em execução</div>
+                <div onclick="setCursoStatus('pagamento')" id="cs-pagamento" class="status-opt" data-s="pagamento">💳 Ag. pagamento</div>
+                <div onclick="setCursoStatus('concluido')" id="cs-concluido" class="status-opt" data-s="concluido">✅ Concluído</div>
+                <div onclick="setCursoStatus('cancelado')" id="cs-cancelado" class="status-opt" data-s="cancelado">❌ Cancelado</div>
+              </div>
+            </div>
+
+            <!-- ABA PROFISSIONAIS -->
+            <div id="ha-painel-prof" style="display:none">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div class="sec-label" style="margin:0">Profissionais do curso</div>
+                <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="adicionarProfissional()"><i class="ti ti-plus"></i> Adicionar</button>
+              </div>
+              <div style="background:#f0f9f4;border-radius:8px;padding:10px 14px;font-size:11px;color:#0a6640;margin-bottom:12px">
+                <strong>Limite legal:</strong> máx. 120h/ano por profissional (Portaria SENASP 63/2012, Art. 15) · Excedente exige autorização especial do FUNSEP
+              </div>
+              <div id="lista-profissionais"></div>
+            </div>
+
+            <!-- ABA DOCUMENTOS -->
+            <div id="ha-painel-docs" style="display:none">
+              <div class="sec-label" style="margin-bottom:12px">Checklist de documentos obrigatórios</div>
+              <div style="background:#dbeafe;border-radius:8px;padding:10px 14px;font-size:11px;color:#1e40af;margin-bottom:12px">
+                <strong>Base legal:</strong> Art. 4º, §3º ao §10º da IN 001/2025 — FUNSEP
+              </div>
+              <div id="checklist-docs"></div>
+            </div>
+
+            <!-- ABA CÁLCULO -->
+            <div id="ha-painel-calc" style="display:none">
+              <div class="sec-label" style="margin-bottom:12px">Cálculo de gratificações — Portaria SENASP 63/2012</div>
+              <div id="calc-resultado"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-curso')">Cancelar</button>
+            <button class="btn-primary" onclick="salvarCurso()"><i class="ti ti-device-floppy"></i> Salvar processo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL DIÁRIA -->
+      <div class="modal-overlay" id="m-diaria">
+        <div class="modal-box" style="width:640px">
+          <div class="modal-header">
+            <div><div class="modal-title" id="m-diaria-title">Nova diária</div>
+            <div class="modal-sub">Controle de diárias e passagens — IN 001/2025</div></div>
+            <button class="modal-close" onclick="fecharModal('m-diaria')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="diaria-edit-id">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group full"><label>Nome do viajante</label>
+                <input type="text" class="form-input" id="d-nome" placeholder="Nome completo"></div>
+              <div class="form-group"><label>CPF</label>
+                <input type="text" class="form-input" id="d-cpf" placeholder="000.000.000-00"></div>
+              <div class="form-group"><label>Função no curso</label>
+                <select class="form-input" id="d-funcao">
+                  <option value="instrutor">Instrutor/Docente</option>
+                  <option value="monitor">Monitor</option>
+                  <option value="coordenador">Coordenador</option>
+                  <option value="supervisor">Supervisor</option>
+                  <option value="aluno">Aluno/Discente</option>
+                  <option value="tecnico">Técnico</option>
+                  <option value="conferencista">Conferencista</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Órgão de origem</label>
+                <input type="text" class="form-input" id="d-orgao" placeholder="Ex: PCAP, PMSP..."></div>
+              <div class="form-group full"><label>Curso vinculado</label>
+                <select class="form-input" id="d-curso">
+                  <option value="">Selecionar curso...</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Cidade de origem</label>
+                <input type="text" class="form-input" id="d-origem" placeholder="Ex: Macapá/AP"></div>
+              <div class="form-group"><label>Cidade de destino</label>
+                <input type="text" class="form-input" id="d-destino" placeholder="Ex: Brasília/DF"></div>
+              <div class="form-group"><label>Data de saída</label>
+                <input type="date" class="form-input" id="d-saida" oninput="calcularDiarias()"></div>
+              <div class="form-group"><label>Data de retorno</label>
+                <input type="date" class="form-input" id="d-retorno" oninput="calcularDiarias()"></div>
+              <div class="form-group"><label>Valor da diária (R$)</label>
+                <input type="number" step="0.01" class="form-input" id="d-valor-diaria" placeholder="Ex: 335,00" oninput="calcularDiarias()"></div>
+              <div class="form-group"><label>Passagem aérea?</label>
+                <select class="form-input" id="d-passagem">
+                  <option value="nao">Não</option>
+                  <option value="sim">Sim</option>
+                </select>
+              </div>
+              <!-- Preview cálculo -->
+              <div class="form-group full" id="d-calc-preview" style="display:none">
+                <div style="background:#f0f9f4;border-radius:8px;padding:12px 14px">
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:13px">
+                    <div><div style="font-size:10px;color:#888">Dias de viagem</div><div style="font-weight:700" id="d-qtd-dias">0</div></div>
+                    <div><div style="font-size:10px;color:#888">Total diárias</div><div style="font-weight:700;color:#0a6640" id="d-total-diarias">R$ 0</div></div>
+                    <div><div style="font-size:10px;color:#888">Base legal</div><div style="font-size:11px;color:#555">IN 001/2025, Art. 10</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group"><label>Status</label>
+                <select class="form-input" id="d-status">
+                  <option value="solicitado">Solicitado</option>
+                  <option value="autorizado">Autorizado</option>
+                  <option value="em_viagem">Em viagem</option>
+                  <option value="concluido">Concluído</option>
+                  <option value="cancelado">Cancelado</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>Observações</label>
+                <input type="text" class="form-input" id="d-obs" placeholder="Opcional"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-diaria')">Cancelar</button>
+            <button class="btn-primary" onclick="salvarDiaria()"><i class="ti ti-device-floppy"></i> Salvar</button>
           </div>
         </div>
       </div>
@@ -1081,6 +1401,8 @@ function showPage(id, el) {
   if (id==='fluxograma') renderFluxograma();
   if (id==='financeiro') renderFinanceiro();
   if (id==='contratos') renderContratos();
+  if (id==='hora-aula') renderHoraAula();
+  if (id==='pessoal') renderPessoal();
 }
 
 function selectOrgao(o) {
@@ -2044,22 +2366,14 @@ var aditivosTemp = [];
 // ── FUNÇÕES GENÉRICAS DE MODAL ──
 function abrirModal(id) {
   var el = document.getElementById(id);
-  if (!el) { console.error('Modal não encontrado:', id); return; }
-  el.style.display = 'flex';
-  setTimeout(function(){ el.classList.add('open'); }, 10);
+  if (!el) { console.warn('Modal nao encontrado: ' + id); return; }
+  el.style.cssText = 'display:flex !important; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; align-items:center; justify-content:center;';
 }
 function fecharModal(id) {
   var el = document.getElementById(id);
   if (!el) return;
-  el.classList.remove('open');
   el.style.display = 'none';
 }
-// Fechar ao clicar fora
-document.addEventListener('click', function(e) {
-  if (e.target && e.target.classList && e.target.classList.contains('modal-overlay')) {
-    fecharModal(e.target.id);
-  }
-});
 
 var CONT_STATUS_LABELS = {
   vigente:'Vigente', em_renovacao:'Em renovação',
@@ -2768,6 +3082,731 @@ renderContratos = async function() {
   await _renderContratosOrig();
   renderDashboardContratos();
 };
+
+// ════════════════════════════════════════════════
+// NÚCLEO ADMINISTRATIVO — HORA-AULA
+// Parametrizado com IN 001/2025 e Portaria SENASP 63/2012
+// ════════════════════════════════════════════════
+
+var CURSOS = [];
+var DIARIAS = [];
+var profissionaisTemp = [];
+var cursoStatusAtual = 'planejamento';
+
+// ── TABELA DE VALORES (Portaria SENASP 63/2012 — Anexo II) ──
+var VALORES_HA = {
+  docente: {
+    fundamental: 60, medio: 80, graduacao: 100,
+    especializacao: 110, mestrado: 130, doutorado: 150
+  },
+  monitor: 50,
+  supervisor: 40,
+  coordenador: 50,
+  conferencista: 100 // sem nível definido — usa graduação como base
+};
+
+var FUNCAO_LABELS = {
+  docente:'Docente/Instrutor', monitor:'Monitor',
+  coordenador:'Coordenador', supervisor:'Supervisor', conferencista:'Conferencista'
+};
+
+var HA_STATUS_CORES = {
+  planejamento:{bg:'#dbeafe',cor:'#1e40af'},
+  analise:{bg:'#fef3c7',cor:'#92400e'},
+  execucao:{bg:'#ede9fe',cor:'#6d28d9'},
+  pagamento:{bg:'#fce7f3',cor:'#9d174d'},
+  concluido:{bg:'#dcfce7',cor:'#166534'},
+  cancelado:{bg:'#f3f4f6',cor:'#374151'}
+};
+
+var HA_STATUS_LABELS = {
+  planejamento:'Planejamento', analise:'Em análise', execucao:'Em execução',
+  pagamento:'Ag. pagamento', concluido:'Concluído', cancelado:'Cancelado'
+};
+
+// Documentos obrigatórios por fase (IN 001/2025, Art. 4º)
+var DOCS_OBRIGATORIOS = [
+  { id:'oficio', label:'Ofício de solicitação de autorização', fase:'planejamento', art:'Art. 2º, §1º' },
+  { id:'dfd', label:'Documento de Formalização de Demanda (DFD)', fase:'planejamento', art:'Art. 2º, §2º' },
+  { id:'portaria_planej', label:'Portaria de designação da equipe de planejamento', fase:'planejamento', art:'Art. 2º, §2º' },
+  { id:'consulta_iesp', label:'Consulta ao IESP — disponibilidade de instrutores', fase:'analise', art:'Art. 4º, §3º, II' },
+  { id:'etp', label:'Estudo Técnico Preliminar (ETP)', fase:'analise', art:'Art. 4º, §3º, III' },
+  { id:'ppc', label:'Projeto Pedagógico de Curso (PPC)', fase:'analise', art:'Art. 4º, §3º, IV' },
+  { id:'portaria_corpo', label:'Minuta da portaria de designação do corpo técnico e docente', fase:'analise', art:'Art. 4º, §3º, V' },
+  { id:'doc_instrutores', label:'Documentação dos instrutores (convite, aceite, ID, currículo, diploma)', fase:'analise', art:'Art. 4º, §4º' },
+  { id:'plano_aula', label:'Plano de aula (por instrutor, assinado)', fase:'analise', art:'Art. 4º, §4º, III' },
+  { id:'planilha_custo', label:'Planilha de custo geral (Excel e PDF)', fase:'analise', art:'Art. 4º, §3º, VII' },
+  { id:'planilha_ha', label:'Planilha de custo de hora-aulas', fase:'analise', art:'Art. 4º, §3º, VII' },
+  { id:'portaria_pub', label:'Portaria publicada no DOE — corpo técnico e docente', fase:'execucao', art:'Art. 9º' },
+  { id:'relatorio_doc', label:'Relatório de Docência (por instrutor)', fase:'pagamento', art:'Art. 16, I' },
+  { id:'ata_conclusao', label:'Ata de conclusão do curso', fase:'pagamento', art:'Art. 16, II, d' },
+  { id:'relatorio_final', label:'Relatório Final de Atividades Educacionais', fase:'pagamento', art:'Art. 16, II, e' },
+  { id:'frequencia', label:'Lista de frequência dos alunos', fase:'pagamento', art:'Art. 16, II, e' },
+  { id:'planilha_prest', label:'Planilha de prestação de contas', fase:'pagamento', art:'Art. 16, II, g' },
+  { id:'parecer_iesp', label:'Parecer técnico pedagógico do IESP', fase:'pagamento', art:'Art. 6º, §3º' },
+];
+
+// ── CARREGAMENTO ──
+async function carregarCursos() {
+  try {
+    var r = await sb.from('cursos_ha').select('*').order('created_at', {ascending:false});
+    if (!r.error) CURSOS = r.data||[];
+  } catch(e) { CURSOS = []; }
+}
+
+async function carregarDiarias() {
+  try {
+    var r = await sb.from('diarias').select('*').order('created_at', {ascending:false});
+    if (!r.error) DIARIAS = r.data||[];
+  } catch(e) { DIARIAS = []; }
+}
+
+// ── RENDER PRINCIPAL ──
+var chartHAStatus = null, chartHAValor = null;
+
+async function renderHoraAula() {
+  await carregarCursos();
+  renderMetricsHA();
+  renderTabelaHoraAula();
+  renderDashboardHA();
+  verificarAlertasHA();
+}
+
+function renderMetricsHA() {
+  var total    = CURSOS.length;
+  var ativos   = CURSOS.filter(function(c){return c.status!=='concluido'&&c.status!=='cancelado';}).length;
+  var concl    = CURSOS.filter(function(c){return c.status==='concluido';}).length;
+  var pagando  = CURSOS.filter(function(c){return c.status==='pagamento';}).length;
+  var valorTotal = CURSOS.reduce(function(s,c){return s+parseFloat(c.valor_estimado||0);},0);
+
+  var el = document.getElementById('ha-metrics');
+  if (!el) return;
+  el.innerHTML =
+    '<div class="metric"><div class="metric-val">'+total+'</div><div class="metric-lbl">Total processos</div></div>'+
+    '<div class="metric"><div class="metric-val" style="color:#6d28d9">'+ativos+'</div><div class="metric-lbl">Em andamento</div></div>'+
+    '<div class="metric"><div class="metric-val" style="color:#9d174d">'+pagando+'</div><div class="metric-lbl">Ag. pagamento</div></div>'+
+    '<div class="metric"><div class="metric-val" style="color:#166534">'+concl+'</div><div class="metric-lbl">Concluídos</div></div>'+
+    '<div class="metric"><div class="metric-val" style="font-size:14px;color:#1a3a5c">'+fmtMoeda(valorTotal)+'</div><div class="metric-lbl">Valor total estimado</div></div>';
+}
+
+function renderDashboardHA() {
+  var ctxS = document.getElementById('ha-chart-status');
+  if (ctxS && CURSOS.length) {
+    if (chartHAStatus) chartHAStatus.destroy();
+    var statuses = ['planejamento','analise','execucao','pagamento','concluido','cancelado'];
+    var labels   = statuses.map(function(s){return HA_STATUS_LABELS[s];});
+    var valores  = statuses.map(function(s){return CURSOS.filter(function(c){return c.status===s;}).length;});
+    var cores    = ['#3b82f6','#f59e0b','#8b5cf6','#ec4899','#22c55e','#9ca3af'];
+    chartHAStatus = new Chart(ctxS, {
+      type:'doughnut',
+      data:{ labels:labels, datasets:[{data:valores, backgroundColor:cores, borderWidth:2, borderColor:'#fff'}] },
+      options:{plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:5}}},cutout:'55%'}
+    });
+  }
+
+  var ctxV = document.getElementById('ha-chart-valor');
+  if (ctxV && CURSOS.length) {
+    if (chartHAValor) chartHAValor.destroy();
+    var eixos = {};
+    CURSOS.forEach(function(c){ if(c.eixo) eixos[c.eixo]=(eixos[c.eixo]||0)+parseFloat(c.valor_estimado||0); });
+    chartHAValor = new Chart(ctxV, {
+      type:'bar',
+      data:{ labels:Object.keys(eixos), datasets:[{label:'Valor estimado',
+        data:Object.values(eixos), backgroundColor:'#6d28d9', borderRadius:6}] },
+      options:{plugins:{legend:{display:false}},scales:{
+        x:{grid:{display:false}},
+        y:{grid:{color:'#f0f0f0'},ticks:{callback:function(v){return 'R$'+Number(v/1000).toFixed(0)+'k';}}}
+      }}
+    });
+  }
+}
+
+function verificarAlertasHA() {
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var alertas = [];
+
+  CURSOS.forEach(function(c) {
+    if (!c.data_inicio || c.status==='concluido'||c.status==='cancelado') return;
+    var inicio = new Date(c.data_inicio+'T12:00:00');
+    var diasAteInicio = Math.round((inicio-hoje)/(1000*60*60*24));
+
+    // Alerta: processo enviado menos de 60 dias antes (Art. 4º, §11)
+    if (c.status==='planejamento' && diasAteInicio < 60 && diasAteInicio >= 0) {
+      alertas.push({ curso:c.nome, msg:'⚠️ Processo deve ser enviado 60 dias antes do início. Faltam '+diasAteInicio+' dias!', cor:'#c0392b' });
+    }
+    // Alerta: menos de 90 dias para planejamento (Art. 2º, §9)
+    if (c.status==='planejamento' && diasAteInicio < 90 && diasAteInicio >= 60) {
+      alertas.push({ curso:c.nome, msg:'📋 Atenção: processo deve estar na fase de análise (menos de 90 dias para o início)', cor:'#d97706' });
+    }
+  });
+
+  var wrap  = document.getElementById('ha-alertas-wrap');
+  var lista = document.getElementById('ha-alertas-lista');
+  if (wrap) wrap.style.display = alertas.length ? 'block':'none';
+  if (lista) lista.innerHTML = alertas.map(function(a){
+    return '<div style="display:flex;gap:10px;padding:5px 0;font-size:12px;border-bottom:1px solid #fbbf2444">'+
+      '<strong style="flex:1">'+a.curso+'</strong>'+
+      '<span style="color:'+a.cor+'">'+a.msg+'</span></div>';
+  }).join('');
+}
+
+function renderTabelaHoraAula() {
+  var busca  = (document.getElementById('ha-busca')||{value:''}).value.toLowerCase();
+  var status = (document.getElementById('ha-filtro-status')||{value:''}).value;
+  var eixo   = (document.getElementById('ha-filtro-eixo')||{value:''}).value;
+
+  var lista = CURSOS.filter(function(c){
+    var mb = !busca||(c.nome||'').toLowerCase().indexOf(busca)>-1;
+    return mb&&(!status||c.status===status)&&(!eixo||c.eixo===eixo);
+  });
+
+  var tb = document.getElementById('tb-hora-aula');
+  if (!tb) return;
+  if (!lista.length) { tb.innerHTML='<tr><td colspan="9"><div class="empty"><i class="ti ti-school-off"></i><p>Nenhum processo encontrado.</p></div></td></tr>'; return; }
+
+  tb.innerHTML = lista.map(function(c){
+    var sit = HA_STATUS_CORES[c.status]||{bg:'#f3f4f6',cor:'#374151'};
+    var profs = c.profissionais ? c.profissionais.length : 0;
+    return '<tr>'+
+      '<td style="font-weight:600;color:#1a3a5c;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+c.nome+'">'+c.nome+'</td>'+
+      '<td><span class="tag" style="background:#0e749022;color:#0e7490;font-weight:700">'+c.eixo+'</span></td>'+
+      '<td style="font-size:11px;color:#555">'+c.acao+'</td>'+
+      '<td style="font-size:12px;color:#888">'+fmtDataBR(c.data_inicio)+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+(c.carga_horaria||0)+'h</td>'+
+      '<td style="text-align:center">'+profs+' prof.</td>'+
+      '<td style="text-align:right;font-weight:600;color:#1a3a5c">'+fmtMoeda(c.valor_estimado||0)+'</td>'+
+      '<td><span style="background:'+sit.bg+';color:'+sit.cor+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">'+HA_STATUS_LABELS[c.status]+'</span></td>'+
+      '<td style="text-align:right;white-space:nowrap">'+
+        '<button class="btn-icon" onclick="editarCurso(\''+c.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
+        '<button class="btn-icon" onclick="excluirCurso(\''+c.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
+      '</td></tr>';
+  }).join('');
+}
+
+// ── ABAS DO MODAL ──
+function haTab(aba) {
+  ['dados','prof','docs','calc'].forEach(function(a){
+    document.getElementById('ha-painel-'+a).style.display = a===aba?'block':'none';
+    var btn = document.getElementById('ha-tab-'+a);
+    if (btn) btn.classList.toggle('active', a===aba);
+  });
+  if (aba==='docs') renderChecklist();
+  if (aba==='calc') renderCalculo();
+}
+
+function setCursoStatus(s) {
+  cursoStatusAtual = s;
+  ['planejamento','analise','execucao','pagamento','concluido','cancelado'].forEach(function(st){
+    var el = document.getElementById('cs-'+st);
+    if (el) { el.className='status-opt'+(st===s?' sel-'+st:''); }
+  });
+}
+
+// ── PROFISSIONAIS ──
+function adicionarProfissional() {
+  profissionaisTemp.push({ nome:'', funcao:'docente', nivel:'graduacao', ch:0, turmas:1, notorio:false });
+  renderProfissionais();
+}
+
+function removerProfissional(idx) {
+  profissionaisTemp.splice(idx,1);
+  renderProfissionais();
+}
+
+function renderProfissionais() {
+  var lista = document.getElementById('lista-profissionais');
+  if (!lista) return;
+  if (!profissionaisTemp.length) {
+    lista.innerHTML='<div style="text-align:center;padding:20px;color:#aaa;font-size:12px;border:1px dashed #ddd;border-radius:8px">Nenhum profissional adicionado ainda.</div>';
+    return;
+  }
+  lista.innerHTML = profissionaisTemp.map(function(p,i){
+    var vlr = calcularValorProf(p);
+    var alertaLimite = p.ch > 120 ? '<span style="color:#c0392b;font-size:10px;font-weight:700">⚠️ Excede 120h/ano</span>' : '';
+    return '<div style="background:#f8fafc;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin-bottom:8px">'+
+      '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 0.5fr auto;gap:8px;align-items:end">'+
+        '<div class="form-group" style="margin:0"><label>Nome</label>'+
+          '<input type="text" class="form-input" style="padding:7px 10px" value="'+(p.nome||'')+'" placeholder="Nome completo" oninput="profissionaisTemp['+i+'].nome=this.value"></div>'+
+        '<div class="form-group" style="margin:0"><label>Função</label>'+
+          '<select class="form-input" style="padding:7px 10px" onchange="profissionaisTemp['+i+'].funcao=this.value;renderProfissionais()">'+
+            ['docente','monitor','coordenador','supervisor','conferencista'].map(function(f){
+              return '<option value="'+f+'"'+(p.funcao===f?' selected':'')+'>'+FUNCAO_LABELS[f]+'</option>';
+            }).join('')+
+          '</select></div>'+
+        (p.funcao==='docente'||p.funcao==='conferencista' ?
+        '<div class="form-group" style="margin:0"><label>Nível</label>'+
+          '<select class="form-input" style="padding:7px 10px" onchange="profissionaisTemp['+i+'].nivel=this.value;renderProfissionais()">'+
+            [['fundamental','Fundamental'],['medio','Médio'],['graduacao','Graduação'],
+             ['especializacao','Especialização'],['mestrado','Mestrado'],['doutorado','Doutorado']].map(function(n){
+              return '<option value="'+n[0]+'"'+(p.nivel===n[0]?' selected':'')+'>'+n[1]+'</option>';
+            }).join('')+
+          '</select></div>' :
+        '<div class="form-group" style="margin:0"><label>Nível</label><div style="padding:7px 10px;background:#f0f0f0;border-radius:7px;font-size:12px;color:#888">Fixo</div></div>')+
+        '<div class="form-group" style="margin:0"><label>CH (h) '+alertaLimite+'</label>'+
+          '<input type="number" class="form-input" style="padding:7px 10px" value="'+(p.ch||0)+'" min="1" max="240" oninput="profissionaisTemp['+i+'].ch=parseInt(this.value)||0;renderProfissionais()"></div>'+
+        '<div style="text-align:center;padding-bottom:4px"><div style="font-size:10px;color:#888">Valor</div><div style="font-weight:700;color:#1a3a5c;font-size:13px">'+fmtMoeda(vlr)+'</div></div>'+
+        '<button onclick="removerProfissional('+i+')" style="background:none;border:none;color:#c0392b;cursor:pointer;margin-bottom:4px"><i class="ti ti-trash"></i></button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  recalcularHoraAula();
+}
+
+function calcularValorProf(p) {
+  var ch = parseInt(p.ch)||0;
+  if (!ch) return 0;
+  var vlrH = 0;
+  if (p.funcao==='docente'||p.funcao==='conferencista') {
+    vlrH = VALORES_HA.docente[p.nivel||'graduacao']||100;
+  } else {
+    vlrH = VALORES_HA[p.funcao]||50;
+  }
+  // Acréscimo para coordenador/supervisor com múltiplas turmas
+  var turmas = parseInt(p.turmas)||1;
+  var acrescimo = turmas===2?0.2:turmas>=3?0.3:0;
+  if ((p.funcao==='coordenador'||p.funcao==='supervisor') && acrescimo>0) vlrH = vlrH*(1+acrescimo);
+  return vlrH * ch;
+}
+
+function recalcularHoraAula() {
+  var totalValor = profissionaisTemp.reduce(function(s,p){return s+calcularValorProf(p);},0);
+  var el = document.getElementById('curso-valor-calc');
+  if (el) el.textContent = fmtMoeda(totalValor);
+}
+
+// ── CHECKLIST ──
+function renderChecklist() {
+  var el = document.getElementById('checklist-docs');
+  if (!el) return;
+  var fase = cursoStatusAtual;
+  var docsOrdenados = DOCS_OBRIGATORIOS;
+
+  el.innerHTML = docsOrdenados.map(function(doc){
+    var destaque = doc.fase===fase;
+    var id = 'doc-chk-'+doc.id;
+    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:'+(destaque?'#fffbeb':'#fff')+';border:1px solid '+(destaque?'#fbbf24':'#e5e7eb')+';border-radius:8px;margin-bottom:6px;cursor:pointer">'+
+      '<input type="checkbox" id="'+id+'" style="width:16px;height:16px;cursor:pointer">'+
+      '<div style="flex:1">'+
+        '<div style="font-size:13px;font-weight:'+(destaque?'600':'400')+';color:'+(destaque?'#92400e':'#333')+'">'+doc.label+'</div>'+
+        '<div style="font-size:10px;color:#888">'+doc.art+' · Fase: '+HA_STATUS_LABELS[doc.fase]+'</div>'+
+      '</div>'+
+      (destaque?'<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">Fase atual</span>':'')+
+    '</label>';
+  }).join('');
+}
+
+// ── CÁLCULO ──
+function renderCalculo() {
+  var el = document.getElementById('calc-resultado');
+  if (!el) return;
+  if (!profissionaisTemp.length) {
+    el.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;font-size:12px">Adicione profissionais na aba "Profissionais" para ver o cálculo.</div>';
+    return;
+  }
+  var totalGeral = 0;
+  var linhas = profissionaisTemp.filter(function(p){return p.nome&&p.ch>0;}).map(function(p){
+    var vlr = calcularValorProf(p);
+    totalGeral += vlr;
+    var vlrH = p.funcao==='docente'||p.funcao==='conferencista' ? VALORES_HA.docente[p.nivel||'graduacao'] : VALORES_HA[p.funcao]||50;
+    return '<tr>'+
+      '<td style="padding:8px 10px;font-size:13px">'+(p.nome||'—')+'</td>'+
+      '<td style="padding:8px 10px;font-size:12px">'+(FUNCAO_LABELS[p.funcao]||p.funcao)+'</td>'+
+      '<td style="padding:8px 10px;font-size:12px">'+(p.funcao==='docente'?p.nivel:'—')+'</td>'+
+      '<td style="padding:8px 10px;text-align:center;font-size:12px">'+(p.ch||0)+'h</td>'+
+      '<td style="padding:8px 10px;text-align:right;font-size:12px">'+fmtMoeda(vlrH)+'/h</td>'+
+      '<td style="padding:8px 10px;text-align:right;font-weight:700;color:#1a3a5c">'+fmtMoeda(vlr)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  el.innerHTML =
+    '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
+    '<thead><tr style="background:#f8fafc">'+
+      '<th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #e5e7eb">Profissional</th>'+
+      '<th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #e5e7eb">Função</th>'+
+      '<th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #e5e7eb">Nível</th>'+
+      '<th style="padding:8px 10px;text-align:center;font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #e5e7eb">CH</th>'+
+      '<th style="padding:8px 10px;text-align:right;font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #e5e7eb">Valor/h</th>'+
+      '<th style="padding:8px 10px;text-align:right;font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #e5e7eb">Total</th>'+
+    '</tr></thead><tbody>'+linhas+'</tbody>'+
+    '<tfoot><tr style="background:#f0f9f4">'+
+      '<td colspan="5" style="padding:10px 10px;font-weight:700;color:#0a6640;font-size:13px">TOTAL GERAL (bruto — incide IR)</td>'+
+      '<td style="padding:10px 10px;text-align:right;font-weight:700;color:#0a6640;font-size:15px">'+fmtMoeda(totalGeral)+'</td>'+
+    '</tr></tfoot></table>'+
+    '<div style="margin-top:10px;font-size:11px;color:#888;background:#f8fafc;border-radius:6px;padding:8px 12px">'+
+      '<i class="ti ti-info-circle"></i> Valores brutos conforme Portaria SENASP/MJ nº 63/2012, Anexo II. '+
+      'Sobre eles incidirão tributos. Não incide recolhimento patronal pelo FUNSEP (Art. 23 da IN 001/2025).'+
+    '</div>';
+}
+
+// ── VERIFICAR PRAZOS ──
+function verificarPrazosHA() {
+  var inicio = document.getElementById('curso-inicio').value;
+  var wrap   = document.getElementById('ha-alerta-prazo');
+  var msg    = document.getElementById('ha-alerta-prazo-msg');
+  if (!wrap||!msg||!inicio) { if(wrap) wrap.style.display='none'; return; }
+  var hoje   = new Date(); hoje.setHours(0,0,0,0);
+  var d      = new Date(inicio+'T12:00:00');
+  var dias   = Math.round((d-hoje)/(1000*60*60*24));
+  if (dias < 0) {
+    wrap.style.display='block';
+    msg.textContent='Data de início no passado.';
+  } else if (dias < 60) {
+    wrap.style.display='block';
+    msg.textContent='Atenção: O processo deve ser encaminhado no mínimo 60 dias antes do início (Art. 4º, §11 da IN 001/2025). Faltam '+dias+' dias!';
+  } else if (dias < 90) {
+    wrap.style.display='block';
+    wrap.style.background='#fef3c7';
+    wrap.style.color='#92400e';
+    msg.textContent='Atenção: O ofício de autorização deve ser enviado com 90 dias de antecedência (Art. 2º, §9). Faltam '+dias+' dias.';
+  } else {
+    wrap.style.display='none';
+  }
+}
+
+// ── SALVAR CURSO ──
+function abrirModalCurso(id) {
+  profissionaisTemp = [];
+  cursoStatusAtual  = 'planejamento';
+  document.getElementById('curso-edit-id').value = id||'';
+  document.getElementById('m-curso-title').textContent = id?'Editar processo':'Novo processo de hora-aula';
+
+  if (id) {
+    var c = CURSOS.find(function(x){return x.id===id;});
+    if (c) {
+      document.getElementById('curso-nome').value         = c.nome||'';
+      document.getElementById('curso-eixo').value         = c.eixo||'';
+      document.getElementById('curso-acao').value         = c.acao||'2255';
+      document.getElementById('curso-ano-repasse').value  = c.ano_repasse||'';
+      document.getElementById('curso-modalidade').value   = c.modalidade||'presencial';
+      document.getElementById('curso-ch').value           = c.carga_horaria||'';
+      document.getElementById('curso-inicio').value       = c.data_inicio||'';
+      document.getElementById('curso-fim').value          = c.data_fim||'';
+      document.getElementById('curso-turmas').value       = c.num_turmas||1;
+      document.getElementById('curso-alunos').value       = c.num_alunos||'';
+      document.getElementById('curso-orgao-req').value    = c.orgao_req||'';
+      document.getElementById('curso-obs').value          = c.obs||'';
+      cursoStatusAtual = c.status||'planejamento';
+      profissionaisTemp = c.profissionais ? JSON.parse(JSON.stringify(c.profissionais)) : [];
+    }
+  } else {
+    ['curso-nome','curso-ch','curso-inicio','curso-fim','curso-alunos','curso-orgao-req','curso-obs'].forEach(function(f){
+      var el=document.getElementById(f); if(el) el.value='';
+    });
+    document.getElementById('curso-eixo').value='';
+    document.getElementById('curso-acao').value='2255';
+    document.getElementById('curso-ano-repasse').value='';
+    document.getElementById('curso-modalidade').value='presencial';
+    document.getElementById('curso-turmas').value='1';
+  }
+
+  setCursoStatus(cursoStatusAtual);
+  haTab('dados');
+  renderProfissionais();
+  abrirModal('m-curso');
+}
+
+function editarCurso(id) { abrirModalCurso(id); }
+
+async function salvarCurso() {
+  var nome = document.getElementById('curso-nome').value.trim();
+  var eixo = document.getElementById('curso-eixo').value;
+  if (!nome||!eixo) { showToast('Informe o nome e o eixo do curso.','error'); return; }
+
+  var valorEstimado = profissionaisTemp.reduce(function(s,p){return s+calcularValorProf(p);},0);
+
+  var payload = {
+    nome, eixo,
+    acao:          document.getElementById('curso-acao').value,
+    ano_repasse:   document.getElementById('curso-ano-repasse').value,
+    modalidade:    document.getElementById('curso-modalidade').value,
+    carga_horaria: parseInt(document.getElementById('curso-ch').value)||0,
+    data_inicio:   document.getElementById('curso-inicio').value||null,
+    data_fim:      document.getElementById('curso-fim').value||null,
+    num_turmas:    parseInt(document.getElementById('curso-turmas').value)||1,
+    num_alunos:    parseInt(document.getElementById('curso-alunos').value)||0,
+    orgao_req:     document.getElementById('curso-orgao-req').value.trim(),
+    obs:           document.getElementById('curso-obs').value.trim(),
+    status:        cursoStatusAtual,
+    profissionais: profissionaisTemp,
+    valor_estimado: valorEstimado,
+  };
+
+  var editId = document.getElementById('curso-edit-id').value;
+  try {
+    if (editId) await sb.from('cursos_ha').update(payload).eq('id', editId);
+    else await sb.from('cursos_ha').insert(payload);
+    fecharModal('m-curso');
+    await carregarCursos();
+    renderHoraAula();
+    showToast(editId?'Processo atualizado!':'Processo criado!');
+  } catch(e) { showToast('Erro ao salvar.','error'); console.error(e); }
+}
+
+async function excluirCurso(id) {
+  if (!confirm('Excluir este processo?')) return;
+  await sb.from('cursos_ha').delete().eq('id', id);
+  await carregarCursos();
+  renderHoraAula();
+  showToast('Excluído.');
+}
+
+// ════════════════════════════════════════════════
+// NÚCLEO DE PESSOAL — DIÁRIAS
+// ════════════════════════════════════════════════
+async function renderPessoal() {
+  await carregarCursos();
+  await carregarDiarias();
+  renderMetricsDiarias();
+  renderTabelaDiarias();
+  popularSelectCursoDiaria();
+}
+
+function renderMetricsDiarias() {
+  var total    = DIARIAS.length;
+  var autorizados = DIARIAS.filter(function(d){return d.status==='autorizado'||d.status==='em_viagem';}).length;
+  var concl    = DIARIAS.filter(function(d){return d.status==='concluido';}).length;
+  var valorTotal = DIARIAS.reduce(function(s,d){return s+parseFloat(d.valor_total||0);},0);
+  var el = document.getElementById('ps-metrics');
+  if (!el) return;
+  el.innerHTML =
+    '<div class="metric"><div class="metric-val">'+total+'</div><div class="metric-lbl">Total diárias</div></div>'+
+    '<div class="metric"><div class="metric-val" style="color:#1e40af">'+autorizados+'</div><div class="metric-lbl">Em andamento</div></div>'+
+    '<div class="metric"><div class="metric-val" style="color:#166534">'+concl+'</div><div class="metric-lbl">Concluídas</div></div>'+
+    '<div class="metric"><div class="metric-val" style="font-size:14px;color:#1a3a5c">'+fmtMoeda(valorTotal)+'</div><div class="metric-lbl">Valor total</div></div>';
+}
+
+function renderTabelaDiarias() {
+  var busca  = (document.getElementById('ps-busca')||{value:''}).value.toLowerCase();
+  var status = (document.getElementById('ps-filtro-status')||{value:''}).value;
+
+  var D_STATUS = { solicitado:{bg:'#dbeafe',cor:'#1e40af'}, autorizado:{bg:'#dcfce7',cor:'#166534'},
+    em_viagem:{bg:'#ede9fe',cor:'#6d28d9'}, concluido:{bg:'#f3f4f6',cor:'#374151'}, cancelado:{bg:'#fee2e2',cor:'#991b1b'} };
+  var D_STATUS_L = { solicitado:'Solicitado', autorizado:'Autorizado',
+    em_viagem:'Em viagem', concluido:'Concluído', cancelado:'Cancelado' };
+  var F_LABELS = { instrutor:'Instrutor', monitor:'Monitor', coordenador:'Coordenador',
+    supervisor:'Supervisor', aluno:'Aluno', tecnico:'Técnico', conferencista:'Conferencista' };
+
+  var lista = DIARIAS.filter(function(d){
+    var mb = !busca||(d.nome||'').toLowerCase().indexOf(busca)>-1||(d.destino||'').toLowerCase().indexOf(busca)>-1;
+    return mb && (!status||d.status===status);
+  });
+
+  var tb = document.getElementById('tb-diarias');
+  if (!tb) return;
+  if (!lista.length) { tb.innerHTML='<tr><td colspan="9"><div class="empty"><i class="ti ti-plane-off"></i><p>Nenhuma diária encontrada.</p></div></td></tr>'; return; }
+
+  tb.innerHTML = lista.map(function(d){
+    var sit = D_STATUS[d.status]||{bg:'#f3f4f6',cor:'#374151'};
+    var cursoVinc = CURSOS.find(function(c){return c.id===d.curso_id;});
+    return '<tr>'+
+      '<td style="font-weight:500">'+(d.nome||'—')+'</td>'+
+      '<td style="font-size:12px">'+(F_LABELS[d.funcao]||d.funcao||'—')+'</td>'+
+      '<td style="font-size:11px;color:#555;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(cursoVinc?cursoVinc.nome:'—')+'</td>'+
+      '<td style="font-size:12px">'+(d.origem||'—')+' → '+(d.destino||'—')+'</td>'+
+      '<td style="font-size:11px;color:#888">'+fmtDataBR(d.data_saida)+' a '+fmtDataBR(d.data_retorno)+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+(d.qtd_dias||0)+'</td>'+
+      '<td style="text-align:right;font-weight:700;color:#1a3a5c">'+fmtMoeda(d.valor_total||0)+'</td>'+
+      '<td><span style="background:'+sit.bg+';color:'+sit.cor+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">'+D_STATUS_L[d.status]+'</span></td>'+
+      '<td style="text-align:right;white-space:nowrap">'+
+        '<button class="btn-icon" onclick="editarDiaria(\''+d.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
+        '<button class="btn-icon" onclick="excluirDiaria(\''+d.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
+      '</td></tr>';
+  }).join('');
+}
+
+function popularSelectCursoDiaria() {
+  var sel = document.getElementById('d-curso');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Selecionar curso...</option>';
+  CURSOS.forEach(function(c){ sel.innerHTML+='<option value="'+c.id+'">'+c.nome+'</option>'; });
+}
+
+function calcularDiarias() {
+  var saida   = document.getElementById('d-saida').value;
+  var retorno = document.getElementById('d-retorno').value;
+  var vlr     = parseFloat(document.getElementById('d-valor-diaria').value)||0;
+  var prev    = document.getElementById('d-calc-preview');
+  if (!saida||!retorno||!vlr) { if(prev) prev.style.display='none'; return; }
+  var dias = Math.round((new Date(retorno+'T12:00:00')-new Date(saida+'T12:00:00'))/(1000*60*60*24))+1;
+  var total = dias * vlr;
+  if (prev) prev.style.display='block';
+  var qdEl = document.getElementById('d-qtd-dias');
+  var tdEl = document.getElementById('d-total-diarias');
+  if (qdEl) qdEl.textContent = dias+' dia'+(dias!==1?'s':'');
+  if (tdEl) tdEl.textContent = fmtMoeda(total);
+}
+
+function abrirModalDiaria(id) {
+  document.getElementById('diaria-edit-id').value = id||'';
+  document.getElementById('m-diaria-title').textContent = id?'Editar diária':'Nova diária';
+  popularSelectCursoDiaria();
+  if (id) {
+    var d = DIARIAS.find(function(x){return x.id===id;});
+    if (d) {
+      document.getElementById('d-nome').value   = d.nome||'';
+      document.getElementById('d-cpf').value    = d.cpf||'';
+      document.getElementById('d-funcao').value = d.funcao||'instrutor';
+      document.getElementById('d-orgao').value  = d.orgao_origem||'';
+      document.getElementById('d-curso').value  = d.curso_id||'';
+      document.getElementById('d-origem').value = d.origem||'';
+      document.getElementById('d-destino').value= d.destino||'';
+      document.getElementById('d-saida').value  = d.data_saida||'';
+      document.getElementById('d-retorno').value= d.data_retorno||'';
+      document.getElementById('d-valor-diaria').value = d.valor_diaria||'';
+      document.getElementById('d-passagem').value= d.passagem||'nao';
+      document.getElementById('d-status').value = d.status||'solicitado';
+      document.getElementById('d-obs').value    = d.obs||'';
+      calcularDiarias();
+    }
+  } else {
+    ['d-nome','d-cpf','d-orgao','d-origem','d-destino','d-saida','d-retorno','d-valor-diaria','d-obs'].forEach(function(f){
+      var el=document.getElementById(f); if(el) el.value='';
+    });
+    document.getElementById('d-funcao').value='instrutor';
+    document.getElementById('d-passagem').value='nao';
+    document.getElementById('d-status').value='solicitado';
+    var prev = document.getElementById('d-calc-preview');
+    if (prev) prev.style.display='none';
+  }
+  abrirModal('m-diaria');
+}
+
+function editarDiaria(id) { abrirModalDiaria(id); }
+
+async function salvarDiaria() {
+  var nome = document.getElementById('d-nome').value.trim();
+  var destino = document.getElementById('d-destino').value.trim();
+  if (!nome||!destino) { showToast('Informe o nome do viajante e o destino.','error'); return; }
+
+  var saida   = document.getElementById('d-saida').value;
+  var retorno = document.getElementById('d-retorno').value;
+  var vlrD    = parseFloat(document.getElementById('d-valor-diaria').value)||0;
+  var dias    = (saida&&retorno) ? Math.round((new Date(retorno+'T12:00:00')-new Date(saida+'T12:00:00'))/(1000*60*60*24))+1 : 0;
+
+  var payload = {
+    nome, cpf: document.getElementById('d-cpf').value.trim(),
+    funcao:    document.getElementById('d-funcao').value,
+    orgao_origem: document.getElementById('d-orgao').value.trim(),
+    curso_id:  document.getElementById('d-curso').value||null,
+    origem:    document.getElementById('d-origem').value.trim(),
+    destino,
+    data_saida:   saida||null,
+    data_retorno: retorno||null,
+    qtd_dias:     dias,
+    valor_diaria: vlrD,
+    valor_total:  dias*vlrD,
+    passagem:  document.getElementById('d-passagem').value,
+    status:    document.getElementById('d-status').value,
+    obs:       document.getElementById('d-obs').value.trim(),
+  };
+
+  var editId = document.getElementById('diaria-edit-id').value;
+  try {
+    if (editId) await sb.from('diarias').update(payload).eq('id', editId);
+    else await sb.from('diarias').insert(payload);
+    fecharModal('m-diaria');
+    await carregarDiarias();
+    renderPessoal();
+    showToast(editId?'Diária atualizada!':'Diária cadastrada!');
+  } catch(e) { showToast('Erro ao salvar.','error'); console.error(e); }
+}
+
+async function excluirDiaria(id) {
+  if (!confirm('Excluir esta diária?')) return;
+  await sb.from('diarias').delete().eq('id', id);
+  await carregarDiarias();
+  renderPessoal();
+  showToast('Excluída.');
+}
+
+// ── EXPORTAÇÕES ──
+function exportarHoraAulaExcel() {
+  if (!CURSOS.length) { showToast('Nenhum processo para exportar.','error'); return; }
+  var dados = CURSOS.map(function(c){
+    return {
+      'Nome do curso': c.nome||'',
+      'Eixo': c.eixo||'',
+      'Ação': c.acao||'',
+      'Ano repasse': c.ano_repasse||'',
+      'Modalidade': c.modalidade||'',
+      'CH Total': c.carga_horaria||0,
+      'Início': fmtDataBR(c.data_inicio),
+      'Término': fmtDataBR(c.data_fim),
+      'Turmas': c.num_turmas||1,
+      'Alunos/turma': c.num_alunos||0,
+      'Órgão requisitante': c.orgao_req||'',
+      'Status': HA_STATUS_LABELS[c.status]||c.status,
+      'Nº profissionais': c.profissionais?c.profissionais.length:0,
+      'Valor estimado (R$)': parseFloat(c.valor_estimado||0),
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(dados);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Hora-Aula');
+  XLSX.writeFile(wb, 'HoraAula_FUNSEP_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('Excel exportado!');
+}
+
+function exportarDiariasExcel() {
+  if (!DIARIAS.length) { showToast('Nenhuma diária para exportar.','error'); return; }
+  var D_STATUS_L = { solicitado:'Solicitado', autorizado:'Autorizado', em_viagem:'Em viagem', concluido:'Concluído', cancelado:'Cancelado' };
+  var dados = DIARIAS.map(function(d){
+    var c = CURSOS.find(function(x){return x.id===d.curso_id;});
+    return {
+      'Viajante': d.nome||'',
+      'CPF': d.cpf||'',
+      'Função': d.funcao||'',
+      'Órgão': d.orgao_origem||'',
+      'Curso vinculado': c?c.nome:'—',
+      'Origem': d.origem||'',
+      'Destino': d.destino||'',
+      'Saída': fmtDataBR(d.data_saida),
+      'Retorno': fmtDataBR(d.data_retorno),
+      'Dias': d.qtd_dias||0,
+      'Valor/dia (R$)': d.valor_diaria||0,
+      'Total (R$)': d.valor_total||0,
+      'Passagem aérea': d.passagem==='sim'?'Sim':'Não',
+      'Status': D_STATUS_L[d.status]||d.status,
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(dados);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Diárias');
+  XLSX.writeFile(wb, 'Diarias_FUNSEP_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('Excel exportado!');
+}
+
+function exportarHoraAulaPDF() {
+  showToast('Gerando PDF...', true);
+  // Reutiliza o padrão dos outros módulos
+  setTimeout(function(){
+    var win = window.open('','_blank');
+    var dt = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+    var linhas = CURSOS.map(function(c,i){
+      var sit = HA_STATUS_CORES[c.status]||{bg:'#f3f4f6',cor:'#374151'};
+      return '<tr style="background:'+(i%2?'#f9fafb':'#fff')+'">'+
+        '<td style="padding:5px 7px;font-size:11px;font-weight:600">'+c.nome+'</td>'+
+        '<td style="padding:5px 7px;font-size:10px">'+c.eixo+'</td>'+
+        '<td style="padding:5px 7px;font-size:10px">'+c.acao+'</td>'+
+        '<td style="padding:5px 7px;font-size:10px">'+fmtDataBR(c.data_inicio)+'</td>'+
+        '<td style="padding:5px 7px;font-size:10px;text-align:center">'+(c.carga_horaria||0)+'h</td>'+
+        '<td style="padding:5px 7px;font-size:10px;text-align:right;font-weight:600">'+fmtMoeda(c.valor_estimado||0)+'</td>'+
+        '<td style="padding:5px 7px"><span style="background:'+sit.bg+';color:'+sit.cor+';padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700">'+HA_STATUS_LABELS[c.status]+'</span></td>'+
+      '</tr>';
+    }).join('');
+    win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório Hora-Aula</title>'+
+      '<style>body{font-family:Arial,sans-serif;margin:0;padding:20px}@media print{@page{size:A4 landscape;margin:12mm}}'+
+      'table{width:100%;border-collapse:collapse}th{background:#1a3a5c;color:#fff;padding:7px;text-align:left;font-size:10px}</style></head><body>'+
+      '<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;border-bottom:3px solid #1a3a5c;padding-bottom:10px">'+
+      '<div><div style="font-size:10px;color:#666;font-weight:700;letter-spacing:1px;text-transform:uppercase">Estado do Amapá — FUNSEP</div>'+
+      '<div style="font-size:16px;font-weight:700;color:#1a3a5c">Relatório de Processos de Hora-Aula</div>'+
+      '<div style="font-size:11px;color:#888">Emitido em: '+dt+' · Base legal: IN 001/2025 · Portaria SENASP 63/2012</div></div></div>'+
+      '<table><thead><tr><th>Curso</th><th>Eixo</th><th>Ação</th><th>Início</th><th>CH</th><th>Valor est.</th><th>Status</th></tr></thead>'+
+      '<tbody>'+linhas+'</tbody></table></body></html>');
+    win.document.close();
+    setTimeout(function(){ win.print(); }, 600);
+  }, 200);
+}
 
 verificarSessao();
 </script>
