@@ -143,7 +143,10 @@ tr:hover td{background:#f8fafc}
       </div>
       <div class="form-group" style="margin-bottom:22px">
         <label>Senha</label>
-        <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+        <div style="position:relative">
+          <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:12px 44px 12px 16px;border:1.5px solid var(--border,#ccc);border-radius:10px;font-size:14px;font-family:inherit;outline:none"/>
+          <button type="button" onclick="toggleSenha('login-pass',this)" title="Mostrar/ocultar senha" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#aaa;font-size:18px;line-height:1"><i class="ti ti-eye"></i></button>
+        </div>
       </div>
       <button class="btn-primary" style="width:100%;justify-content:center;font-size:14px;padding:11px" onclick="doLogin()">
         <i class="ti ti-login"></i> Entrar
@@ -162,7 +165,10 @@ tr:hover td{background:#f8fafc}
       </div>
       <div class="form-group" style="margin-bottom:22px">
         <label>Senha</label>
-        <input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres"/>
+        <div style="position:relative">
+          <input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres" style="width:100%;padding:12px 44px 12px 16px;border:1.5px solid var(--border,#ccc);border-radius:10px;font-size:14px;font-family:inherit;outline:none"/>
+          <button type="button" onclick="toggleSenha('reg-pass',this)" title="Mostrar/ocultar senha" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#aaa;font-size:18px;line-height:1"><i class="ti ti-eye"></i></button>
+        </div>
       </div>
       <button class="btn-primary" style="width:100%;justify-content:center;font-size:14px;padding:11px" onclick="doRegister()">
         <i class="ti ti-user-plus"></i> Criar conta
