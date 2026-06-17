@@ -328,14 +328,40 @@ tr:hover td{background:#f8fafc}
             <div class="form-group"><label>Base Legal</label>
               <select id="f-base">
                 <option value="">Selecione...</option>
-                <option>Lei 14.133/2021 — Nova Lei de Licitações</option>
-                <option>Art. 74 — Dispensa de Licitação</option>
-                <option>Art. 75 — Dispensa por Valor</option>
-                <option>Art. 76 — Inexigibilidade</option>
-                <option>Pregão Eletrônico</option>
-                <option>Concorrência</option>
-                <option>Tomada de Preços</option>
-                <option>Convite</option>
+                <optgroup label="── Inexigibilidade de Licitação ──">
+                  <option>Art. 74 — Inexigibilidade de Licitação (caput)</option>
+                  <option>Art. 74, I — Fornecedor exclusivo (inexigibilidade)</option>
+                  <option>Art. 74, II — Serviços técnicos especializados de natureza singular</option>
+                  <option>Art. 74, III, a — Profissional do setor artístico consagrado pela crítica</option>
+                  <option>Art. 74, III, b — Profissional do setor artístico consagrado pelo público</option>
+                  <option>Art. 74, IV — Credenciamento de prestadores de serviços</option>
+                  <option>Art. 74, V — Aquisição e locação de imóvel</option>
+                </optgroup>
+                <optgroup label="── Dispensa de Licitação ──">
+                  <option>Art. 75, I — Dispensa por valor (obras e serviços de engenharia ≤ R$ 100.000)</option>
+                  <option>Art. 75, II — Dispensa por valor (outros serviços e compras ≤ R$ 50.000)</option>
+                  <option>Art. 75, III — Emergência ou calamidade pública</option>
+                  <option>Art. 75, IV — Licitação deserta ou fracassada</option>
+                  <option>Art. 75, V — Intervenção no domínio econômico</option>
+                  <option>Art. 75, VI — Produto para pesquisa, experimento ou desenvolvimento tecnológico</option>
+                  <option>Art. 75, VII — Aquisição de bens destinados exclusivamente à pesquisa científica</option>
+                  <option>Art. 75, VIII — Aquisição de componente ou peça de origem nacional ou estrangeira</option>
+                  <option>Art. 75, IX — Operações de compras realizadas por meio de bolsa de mercadorias</option>
+                  <option>Art. 75, X — Aquisição de bens ou contratação de serviços por pessoa jurídica de direito público</option>
+                  <option>Art. 75, XI — Contratação de remanescente de obra, serviço ou fornecimento</option>
+                  <option>Art. 75, XII — Contratação de instituição de pesquisa, ensino ou desenvolvimento</option>
+                  <option>Art. 75, XIII — Contratação com associação de pessoas com deficiência</option>
+                  <option>Art. 75, XIV — Contratação com Microempresa ou EPP na zona rural</option>
+                  <option>Art. 75, XV — Aquisição de bens ou serviços de órgão da Administração Pública</option>
+                  <option>Art. 75, XVI — Bem ou serviço produzido ou prestado por órgão ou entidade pública</option>
+                </optgroup>
+                <optgroup label="── Modalidades de Licitação ──">
+                  <option>Pregão Eletrônico — Lei 14.133/2021</option>
+                  <option>Concorrência — Lei 14.133/2021</option>
+                  <option>Concurso — Lei 14.133/2021</option>
+                  <option>Leilão — Lei 14.133/2021</option>
+                  <option>Diálogo Competitivo — Lei 14.133/2021</option>
+                </optgroup>
               </select>
             </div>
           </div>
@@ -1668,7 +1694,10 @@ function editarProcesso(id) {
     renderEmpenhosProcesso();
     atualizarSaldoEmpenhos();
   }, 100);
-  showPage('novo', document.querySelectorAll('.nav-item')[2]);
+  // Navegar para a página de formulário e ativar o nav-item correto
+  var navNovo = document.querySelector('.nav-item[onclick*="\'novo\'"]');
+  showPage('novo', navNovo);
+  window.scrollTo(0,0);
 }
 
 async function excluirProcesso(id) {
