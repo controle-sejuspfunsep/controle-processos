@@ -1672,11 +1672,25 @@ function editarProcesso(id) {
   var p = processos.find(function(x){ return x.id==id; });
   if (!p) return;
   editId = id;
+
+  // Navegar para a página sem chamar resetForm()
+  document.querySelectorAll('.page').forEach(function(pg){ pg.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+  var pageNovo = document.getElementById('page-novo');
+  if (pageNovo) pageNovo.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n){
+    if (n.textContent.trim().indexOf('Novo Processo') >= 0) n.classList.add('active');
+  });
+
   document.getElementById('form-title').textContent = 'Editar Processo';
   empenhosProcessoTemp = p.empenhos ? JSON.parse(JSON.stringify(p.empenhos)) : [];
+
   var ftot = document.getElementById('f-valor-total');
   if (ftot) ftot.value = p.valor_total||'';
+
+  selectedOrgao = ''; selectedStatus = '';
   selectOrgao(p.orgao);
+
   document.getElementById('f-oficio').value      = p.oficio||'';
   document.getElementById('f-data-oficio').value = p.data_oficio||'';
   document.getElementById('f-siga').value        = p.siga||'';
@@ -1686,18 +1700,17 @@ function editarProcesso(id) {
   document.getElementById('f-base').value        = p.base_legal||'';
   selectStatus(p.status);
   document.getElementById('f-dotacao').value     = p.dotacao||'';
-  document.getElementById('f-empenho').value     = p.empenho||'';
-  document.getElementById('f-contrato').value    = p.contrato||'';
-  document.getElementById('f-portaria').value    = p.portaria||'';
+  var fcontrato = document.getElementById('f-contrato');
+  if (fcontrato) fcontrato.value = p.contrato||'';
+  var fportaria = document.getElementById('f-portaria');
+  if (fportaria) fportaria.value = p.portaria||'';
+
   // Renderizar empenhos carregados
   setTimeout(function(){
     renderEmpenhosProcesso();
     atualizarSaldoEmpenhos();
   }, 100);
-  // Navegar para a página de formulário e ativar o nav-item correto
-  var navNovo = document.querySelector('.nav-item[onclick*="\'novo\'"]');
-  showPage('novo', navNovo);
-  window.scrollTo(0,0);
+  window.scrollTo(0, 0);
 }
 
 async function excluirProcesso(id) {
