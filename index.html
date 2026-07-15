@@ -1909,7 +1909,7 @@ function renderTable() {
       '<td><span class="tag tag-'+p.status+'">'+statusLabel(p.status)+'</span></td>'+
       '<td style="white-space:nowrap">'+
         '<button class="btn-icon" onclick="editarProcesso(\''+p.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
-        (PERFIL&&PERFIL.perfil==='Gestor'?'<button class="btn-icon" onclick="excluirProcesso(\''+p.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>':'')+
+        '<button class="btn-icon" onclick="excluirProcesso(\''+p.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
       '</td>'+
     '</tr>';
   }).join('');
