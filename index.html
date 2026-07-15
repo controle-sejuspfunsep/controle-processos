@@ -258,6 +258,7 @@ tr:hover td{background:#f8fafc}
       <div class="nav-item" id="nav-adm" onclick="showPage('adm',this)"><i class="ti ti-school"></i> 🎓 Núcleo Administrativo</div>
       <div class="nav-item" id="nav-financeiro" onclick="showPage('financeiro',this)"><i class="ti ti-building-bank"></i> Núcleo Financeiro</div>
       <div class="nav-item" id="nav-contratos" onclick="showPage('contratos',this)"><i class="ti ti-file-contract"></i> 📋 Núcleo de Contratos e Convênios <span id="badge-contratos" style="display:none;background:#c0392b;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px">!</span></div>
+      <div class="nav-item" id="nav-documentos" onclick="showPage('documentos',this)"><i class="ti ti-folder"></i> 📁 Documentos</div>
       <div class="nav-item" id="nav-usuarios" style="display:none" onclick="showPage('usuarios',this)"><i class="ti ti-users"></i> Usuários</div>
     </div>
     <div class="content">
@@ -313,10 +314,7 @@ tr:hover td{background:#f8fafc}
         <div class="section-header">
           <span class="section-title">Processos</span>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn-secondary" onclick="exportarExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
-            <button class="btn-secondary" onclick="exportarPDF()"><i class="ti ti-file-type-pdf"></i> PDF</button>
-            <button class="btn-secondary" onclick="exportarRelatorioFUNSEPExcel()" title="Relatório em abas por ano de exercício e natureza (Investimento/Custeio), no formato usado pela CAF/SEJUSP"><i class="ti ti-report"></i> Relatório FUNSEP (Excel)</button>
-            <button class="btn-secondary" onclick="exportarRelatorioFUNSEPPDF()" title="Relatório em seções por ano de exercício e natureza (Investimento/Custeio), no formato usado pela CAF/SEJUSP"><i class="ti ti-report"></i> Relatório FUNSEP (PDF)</button>
+            <button class="btn-secondary" onclick="abrirEscolhaRelatorio()" title="Relatório de processos SEJUSP e FUNSEP, em abas por ano de exercício e natureza (Investimento/Custeio)"><i class="ti ti-report"></i> Relatório</button>
             <button class="btn-primary" onclick="showPage('novo', document.getElementById('nav-processos'));resetForm()"><i class="ti ti-plus"></i> Novo Processo</button>
           </div>
         </div>
@@ -647,6 +645,57 @@ tr:hover td{background:#f8fafc}
         </div>
       </div>
 
+
+      <!-- DOCUMENTOS: MODELOS E LEGISLAÇÃO -->
+      <div id="page-documentos" class="page">
+        <div class="section-header">
+          <span class="section-title">📁 Documentos</span>
+        </div>
+
+        <!-- Abas internas -->
+        <div style="display:flex;gap:0;border-bottom:2px solid #e0e0e0;margin-bottom:18px">
+          <button id="doc-tab-modelos" onclick="docTab('modelos')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;color:#1a3a5c;border-bottom:3px solid #1a3a5c;cursor:pointer;margin-bottom:-2px">Modelos de Documentos</button>
+          <button id="doc-tab-legislacao" onclick="docTab('legislacao')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Legislação</button>
+        </div>
+
+        <!-- MODELOS DE DOCUMENTOS -->
+        <div id="doc-painel-modelos">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <input type="text" id="mod-busca" placeholder="Buscar modelo..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:220px" oninput="renderModelos()">
+              <select id="mod-filtro-categoria" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderModelos()">
+                <option value="">Todas as categorias</option>
+                <option>TR Serviço</option>
+                <option>TR Aquisição</option>
+                <option>DFD</option>
+                <option>ETP</option>
+                <option>Autorização de Empenho FUNSEP</option>
+                <option>Autorização de Empenho SEJUSP</option>
+                <option>Portaria de Pagamento de Hora-Aula</option>
+                <option>Outro</option>
+              </select>
+            </div>
+            <button class="btn-primary" onclick="abrirModalModelo()"><i class="ti ti-upload"></i> Novo Modelo</button>
+          </div>
+          <div id="lista-modelos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"></div>
+        </div>
+
+        <!-- LEGISLAÇÃO -->
+        <div id="doc-painel-legislacao" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <input type="text" id="leg-busca" placeholder="Buscar por título, número ou palavra-chave..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:280px" oninput="renderLegislacoes()">
+              <select id="leg-filtro-tipo" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderLegislacoes()">
+                <option value="">Todos os tipos</option>
+                <option>Lei</option><option>Decreto</option><option>Portaria</option>
+                <option>Instrução Normativa</option><option>Resolução</option><option>Outro</option>
+              </select>
+            </div>
+            <button class="btn-primary" onclick="abrirModalLegislacao()"><i class="ti ti-plus"></i> Nova Legislação</button>
+          </div>
+          <div id="lista-legislacoes" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+      </div>
 
 
       <!-- NÚCLEO ADMINISTRATIVO — HORA-AULA -->
@@ -1346,6 +1395,87 @@ tr:hover td{background:#f8fafc}
       </div>
 
       <!-- MODAL EXECUÇÃO CONTRATUAL -->
+      <!-- MODAL NOVO MODELO DE DOCUMENTO -->
+      <div class="modal-overlay" id="m-modelo">
+        <div class="modal-box" style="width:520px">
+          <div class="modal-header">
+            <div><div class="modal-title" id="m-modelo-title">Novo Modelo de Documento</div><div class="modal-sub">Arquivo .docx padronizado para uso da equipe</div></div>
+            <button class="modal-close" onclick="fecharModal('m-modelo')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="mod-edit-id">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="form-group full"><label>Categoria</label>
+                <select id="mod-categoria" class="form-input">
+                  <option>TR Serviço</option>
+                  <option>TR Aquisição</option>
+                  <option>DFD</option>
+                  <option>ETP</option>
+                  <option>Autorização de Empenho FUNSEP</option>
+                  <option>Autorização de Empenho SEJUSP</option>
+                  <option>Portaria de Pagamento de Hora-Aula</option>
+                  <option>Outro</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>Nome do modelo</label><input type="text" class="form-input" id="mod-nome" placeholder="Ex: Termo de Referência - Serviço (modelo padrão)"></div>
+              <div class="form-group full"><label>Descrição</label><textarea class="form-input" id="mod-descricao" style="min-height:60px" placeholder="Quando usar este modelo, observações..."></textarea></div>
+              <div class="form-group full" id="mod-grupo-arquivo"><label>Arquivo (.docx)</label><input type="file" class="form-input" id="mod-arquivo" accept=".docx"></div>
+              <div class="form-group full" id="mod-arquivo-atual" style="display:none;font-size:12px;color:#555;background:#f7f7f7;border-radius:8px;padding:8px 12px"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-modelo')">Cancelar</button>
+            <button class="btn-primary" id="mod-btn-salvar" onclick="salvarModelo()"><i class="ti ti-device-floppy"></i> Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL NOVA LEGISLAÇÃO -->
+      <div class="modal-overlay" id="m-legislacao">
+        <div class="modal-box" style="width:560px">
+          <div class="modal-header">
+            <div><div class="modal-title" id="m-legislacao-title">Nova Legislação</div><div class="modal-sub">Cadastre uma norma para consulta rápida da equipe</div></div>
+            <button class="modal-close" onclick="fecharModal('m-legislacao')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="leg-edit-id">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="form-group full"><label>Título</label><input type="text" class="form-input" id="leg-titulo" placeholder="Ex: Portaria SENASP nº 63/2012"></div>
+              <div class="form-group"><label>Tipo</label>
+                <select id="leg-tipo" class="form-input">
+                  <option>Lei</option><option>Decreto</option><option>Portaria</option>
+                  <option>Instrução Normativa</option><option>Resolução</option><option>Outro</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Número</label><input type="text" class="form-input" id="leg-numero" placeholder="Ex: 63/2012"></div>
+              <div class="form-group full"><label>Ementa / do que trata</label><textarea class="form-input" id="leg-ementa" style="min-height:60px" placeholder="Resumo do conteúdo da norma..."></textarea></div>
+              <div class="form-group full"><label>Palavras-chave (separadas por vírgula)</label><input type="text" class="form-input" id="leg-tags" placeholder="Ex: hora-aula, gratificação, capacitação"></div>
+              <div class="form-group full"><label>Link oficial (opcional)</label><input type="text" class="form-input" id="leg-link" placeholder="Ex: https://..."></div>
+              <div class="form-group full" id="leg-grupo-arquivo"><label>Arquivo PDF (opcional, se não tiver link)</label><input type="file" class="form-input" id="leg-arquivo" accept=".pdf"></div>
+              <div class="form-group full" id="leg-arquivo-atual" style="display:none;font-size:12px;color:#555;background:#f7f7f7;border-radius:8px;padding:8px 12px"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-legislacao')">Cancelar</button>
+            <button class="btn-primary" id="leg-btn-salvar" onclick="salvarLegislacao()"><i class="ti ti-device-floppy"></i> Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL ESCOLHA DE FORMATO DO RELATORIO -->
+      <div class="modal-overlay" id="m-relatorio-tipo">
+        <div class="modal-box" style="width:380px">
+          <div class="modal-header">
+            <div><div class="modal-title">Gerar Relatório</div><div class="modal-sub">Processos SEJUSP e FUNSEP, por ano de exercício e natureza</div></div>
+            <button class="modal-close" onclick="fecharModal('m-relatorio-tipo')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body" style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn-secondary" style="justify-content:flex-start;padding:14px 16px;font-size:14px" onclick="fecharModal('m-relatorio-tipo');exportarRelatorioFUNSEPExcel()"><i class="ti ti-file-spreadsheet" style="font-size:18px;margin-right:8px"></i> Excel (.xlsx)</button>
+            <button class="btn-secondary" style="justify-content:flex-start;padding:14px 16px;font-size:14px" onclick="fecharModal('m-relatorio-tipo');exportarRelatorioFUNSEPPDF()"><i class="ti ti-file-type-pdf" style="font-size:18px;margin-right:8px"></i> PDF</button>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-overlay" id="m-execucao">
         <div class="modal-box" style="width:780px;max-height:94vh">
           <div class="modal-header">
@@ -1797,6 +1927,7 @@ function showPage(id, el) {
   if (id==='financeiro') renderFinanceiro();
   if (id==='contratos') renderContratos();
   if (id==='adm') admTab(admAbaAtiva || 'geral');
+  if (id==='documentos') docTab(docAbaAtiva || 'modelos');
 }
 
 function selectOrgao(o) {
@@ -2168,6 +2299,11 @@ function exportarPDF() {
 // ════════════════════════════════════════════════
 // RELATORIO FUNSEP POR ABAS (Ano de Exercicio x Natureza)
 // ════════════════════════════════════════════════
+function abrirEscolhaRelatorio() {
+  if (!processos.length) { showToast('Nenhum processo cadastrado para exportar.','error'); return; }
+  abrirModal('m-relatorio-tipo');
+}
+
 function agruparProcessosRelatorio() {
   var grupos = {};
   processos.forEach(function(p){
@@ -3792,6 +3928,270 @@ var CURSOS = [];
 var DIARIAS = [];
 var PAGAMENTOS = [];
 var admAbaAtiva = 'geral';
+
+// ════════════════════════════════════════════════
+// DOCUMENTOS: MODELOS E LEGISLACAO
+// ════════════════════════════════════════════════
+var MODELOS = [];
+var LEGISLACOES = [];
+var docAbaAtiva = 'modelos';
+
+function docTab(aba) {
+  docAbaAtiva = aba;
+  document.getElementById('doc-painel-modelos').style.display    = aba==='modelos'    ? 'block' : 'none';
+  document.getElementById('doc-painel-legislacao').style.display = aba==='legislacao' ? 'block' : 'none';
+  var btnM = document.getElementById('doc-tab-modelos');
+  var btnL = document.getElementById('doc-tab-legislacao');
+  if (btnM) { btnM.style.color = aba==='modelos'?'#1a3a5c':'#888'; btnM.style.borderBottom = aba==='modelos'?'3px solid #1a3a5c':'none'; }
+  if (btnL) { btnL.style.color = aba==='legislacao'?'#1a3a5c':'#888'; btnL.style.borderBottom = aba==='legislacao'?'3px solid #1a3a5c':'none'; }
+  if (aba==='modelos') renderModelos();
+  else renderLegislacoes();
+}
+
+async function carregarModelos() {
+  try {
+    var r = await sb.from('cp_modelos_documentos').select('*').order('categoria').order('nome');
+    if (!r.error) MODELOS = r.data||[];
+  } catch(e) { MODELOS = []; }
+}
+
+async function carregarLegislacoes() {
+  try {
+    var r = await sb.from('cp_legislacoes').select('*').order('tipo').order('titulo');
+    if (!r.error) LEGISLACOES = r.data||[];
+  } catch(e) { LEGISLACOES = []; }
+}
+
+async function renderModelos() {
+  await carregarModelos();
+  var busca = (document.getElementById('mod-busca')||{value:''}).value.toLowerCase();
+  var filtCat = (document.getElementById('mod-filtro-categoria')||{value:''}).value;
+  var lista = MODELOS.filter(function(m){
+    var mb = !busca || (m.nome||'').toLowerCase().indexOf(busca)>-1 || (m.descricao||'').toLowerCase().indexOf(busca)>-1;
+    return mb && (!filtCat || m.categoria===filtCat);
+  });
+  var el = document.getElementById('lista-modelos');
+  if (!el) return;
+  if (!lista.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1"><i class="ti ti-file-off"></i><p>Nenhum modelo cadastrado.</p></div>'; return; }
+  el.innerHTML = lista.map(function(m){
+    return '<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:8px">'+
+      '<span class="tag" style="background:#eaf1fb;color:#1a3a5c;align-self:flex-start">'+(m.categoria||'—')+'</span>'+
+      '<div style="font-weight:700;font-size:13px;color:#222">'+(m.nome||'Sem nome')+'</div>'+
+      '<div style="font-size:12px;color:#666;flex:1">'+(m.descricao||'')+'</div>'+
+      '<div style="display:flex;gap:8px;margin-top:6px;align-items:center">'+
+        (m.arquivo_url ? '<a href="'+m.arquivo_url+'" target="_blank" class="btn-primary" style="text-decoration:none;font-size:12px;padding:7px 12px"><i class="ti ti-download"></i> Baixar</a>' : '<span style="font-size:11px;color:#aaa">Sem arquivo</span>')+
+        '<button class="btn-icon" onclick="editarModelo(\''+m.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
+        '<button class="btn-icon" onclick="excluirModelo(\''+m.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+async function renderLegislacoes() {
+  await carregarLegislacoes();
+  var busca = (document.getElementById('leg-busca')||{value:''}).value.toLowerCase();
+  var filtTipo = (document.getElementById('leg-filtro-tipo')||{value:''}).value;
+  var lista = LEGISLACOES.filter(function(l){
+    var mb = !busca ||
+      (l.titulo||'').toLowerCase().indexOf(busca)>-1 ||
+      (l.numero||'').toLowerCase().indexOf(busca)>-1 ||
+      (l.tags||'').toLowerCase().indexOf(busca)>-1 ||
+      (l.ementa||'').toLowerCase().indexOf(busca)>-1;
+    return mb && (!filtTipo || l.tipo===filtTipo);
+  });
+  var el = document.getElementById('lista-legislacoes');
+  if (!el) return;
+  if (!lista.length) { el.innerHTML = '<div class="empty"><i class="ti ti-scale-outline"></i><p>Nenhuma legislação cadastrada.</p></div>'; return; }
+  el.innerHTML = lista.map(function(l){
+    var link = l.link_url || l.arquivo_url;
+    return '<div class="card" style="padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'+
+      '<div style="flex:1">'+
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">'+
+          '<span class="tag" style="background:#eaf1fb;color:#1a3a5c">'+(l.tipo||'—')+(l.numero?(' '+l.numero):'')+'</span>'+
+        '</div>'+
+        '<div style="font-weight:700;font-size:13px;color:#222;margin-bottom:2px">'+(l.titulo||'Sem título')+'</div>'+
+        '<div style="font-size:12px;color:#666">'+(l.ementa||'')+'</div>'+
+        (l.tags?('<div style="font-size:11px;color:#0e7490;margin-top:4px">'+l.tags.split(',').map(function(t){return '#'+t.trim();}).join(' ')+'</div>'):'')+
+      '</div>'+
+      '<div style="display:flex;gap:6px;white-space:nowrap">'+
+        (link ? '<a href="'+link+'" target="_blank" class="btn-icon" title="Abrir"><i class="ti ti-external-link"></i></a>' : '')+
+        '<button class="btn-icon" onclick="editarLegislacao(\''+l.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
+        '<button class="btn-icon" onclick="excluirLegislacao(\''+l.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ── MODAL MODELO ──
+function abrirModalModelo(id) {
+  document.getElementById('mod-edit-id').value = id||'';
+  document.getElementById('m-modelo-title').textContent = id ? 'Editar Modelo de Documento' : 'Novo Modelo de Documento';
+  var arquivoAtualEl = document.getElementById('mod-arquivo-atual');
+  document.getElementById('mod-arquivo').value = '';
+  if (id) {
+    var m = MODELOS.find(function(x){return x.id===id;});
+    if (m) {
+      document.getElementById('mod-categoria').value  = m.categoria||'TR Serviço';
+      document.getElementById('mod-nome').value        = m.nome||'';
+      document.getElementById('mod-descricao').value   = m.descricao||'';
+      if (m.arquivo_nome) {
+        arquivoAtualEl.style.display='block';
+        arquivoAtualEl.innerHTML = '<i class="ti ti-file-text"></i> Arquivo atual: <strong>'+m.arquivo_nome+'</strong> (envie um novo arquivo apenas se quiser substituí-lo)';
+      } else { arquivoAtualEl.style.display='none'; }
+    }
+  } else {
+    document.getElementById('mod-categoria').value = 'TR Serviço';
+    document.getElementById('mod-nome').value = '';
+    document.getElementById('mod-descricao').value = '';
+    arquivoAtualEl.style.display='none';
+  }
+  abrirModal('m-modelo');
+}
+
+function editarModelo(id) { abrirModalModelo(id); }
+
+async function salvarModelo() {
+  var nome = document.getElementById('mod-nome').value.trim();
+  var categoria = document.getElementById('mod-categoria').value;
+  if (!nome) { showToast('Informe o nome do modelo.','error'); return; }
+
+  var editId = document.getElementById('mod-edit-id').value;
+  var arquivoInput = document.getElementById('mod-arquivo');
+  var arquivo = arquivoInput.files[0];
+
+  if (!editId && !arquivo) { showToast('Selecione o arquivo .docx do modelo.','error'); return; }
+
+  var btn = document.getElementById('mod-btn-salvar');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Enviando...';
+
+  try {
+    var payload = {
+      categoria: categoria,
+      nome: nome,
+      descricao: document.getElementById('mod-descricao').value.trim(),
+      criado_por: PERFIL ? PERFIL.nome : (USER?USER.email:''),
+    };
+
+    if (arquivo) {
+      var caminho = 'modelos/' + Date.now() + '-' + arquivo.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      var up = await sb.storage.from('documentos').upload(caminho, arquivo, { upsert:true });
+      if (up.error) throw up.error;
+      var pub = sb.storage.from('documentos').getPublicUrl(caminho);
+      payload.arquivo_path = caminho;
+      payload.arquivo_nome = arquivo.name;
+      payload.arquivo_url  = pub.data.publicUrl;
+    }
+
+    if (editId) await sb.from('cp_modelos_documentos').update(payload).eq('id', editId);
+    else await sb.from('cp_modelos_documentos').insert(payload);
+
+    fecharModal('m-modelo');
+    await renderModelos();
+    showToast(editId?'Modelo atualizado!':'Modelo cadastrado!');
+  } catch(e) {
+    showToast('Erro ao salvar modelo.','error'); console.error(e);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-device-floppy"></i> Salvar';
+  }
+}
+
+async function excluirModelo(id) {
+  if (!confirm('Excluir este modelo de documento?')) return;
+  var m = MODELOS.find(function(x){return x.id===id;});
+  try {
+    if (m && m.arquivo_path) await sb.storage.from('documentos').remove([m.arquivo_path]);
+    await sb.from('cp_modelos_documentos').delete().eq('id', id);
+    showToast('Modelo excluído.');
+    await renderModelos();
+  } catch(e) { showToast('Erro ao excluir.','error'); }
+}
+
+// ── MODAL LEGISLACAO ──
+function abrirModalLegislacao(id) {
+  document.getElementById('leg-edit-id').value = id||'';
+  document.getElementById('m-legislacao-title').textContent = id ? 'Editar Legislação' : 'Nova Legislação';
+  var arquivoAtualEl = document.getElementById('leg-arquivo-atual');
+  document.getElementById('leg-arquivo').value = '';
+  if (id) {
+    var l = LEGISLACOES.find(function(x){return x.id===id;});
+    if (l) {
+      document.getElementById('leg-titulo').value  = l.titulo||'';
+      document.getElementById('leg-tipo').value     = l.tipo||'Lei';
+      document.getElementById('leg-numero').value   = l.numero||'';
+      document.getElementById('leg-ementa').value   = l.ementa||'';
+      document.getElementById('leg-tags').value     = l.tags||'';
+      document.getElementById('leg-link').value     = l.link_url||'';
+      if (l.arquivo_nome) {
+        arquivoAtualEl.style.display='block';
+        arquivoAtualEl.innerHTML = '<i class="ti ti-file-text"></i> Arquivo atual: <strong>'+l.arquivo_nome+'</strong> (envie um novo arquivo apenas se quiser substituí-lo)';
+      } else { arquivoAtualEl.style.display='none'; }
+    }
+  } else {
+    ['leg-titulo','leg-numero','leg-ementa','leg-tags','leg-link'].forEach(function(f){ document.getElementById(f).value=''; });
+    document.getElementById('leg-tipo').value = 'Lei';
+    arquivoAtualEl.style.display='none';
+  }
+  abrirModal('m-legislacao');
+}
+
+function editarLegislacao(id) { abrirModalLegislacao(id); }
+
+async function salvarLegislacao() {
+  var titulo = document.getElementById('leg-titulo').value.trim();
+  if (!titulo) { showToast('Informe o título da legislação.','error'); return; }
+
+  var editId = document.getElementById('leg-edit-id').value;
+  var arquivoInput = document.getElementById('leg-arquivo');
+  var arquivo = arquivoInput.files[0];
+
+  var btn = document.getElementById('leg-btn-salvar');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Enviando...';
+
+  try {
+    var payload = {
+      titulo: titulo,
+      tipo: document.getElementById('leg-tipo').value,
+      numero: document.getElementById('leg-numero').value.trim(),
+      ementa: document.getElementById('leg-ementa').value.trim(),
+      tags: document.getElementById('leg-tags').value.trim(),
+      link_url: document.getElementById('leg-link').value.trim(),
+      criado_por: PERFIL ? PERFIL.nome : (USER?USER.email:''),
+    };
+
+    if (arquivo) {
+      var caminho = 'legislacao/' + Date.now() + '-' + arquivo.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      var up = await sb.storage.from('documentos').upload(caminho, arquivo, { upsert:true });
+      if (up.error) throw up.error;
+      var pub = sb.storage.from('documentos').getPublicUrl(caminho);
+      payload.arquivo_path = caminho;
+      payload.arquivo_nome = arquivo.name;
+      payload.arquivo_url  = pub.data.publicUrl;
+    }
+
+    if (editId) await sb.from('cp_legislacoes').update(payload).eq('id', editId);
+    else await sb.from('cp_legislacoes').insert(payload);
+
+    fecharModal('m-legislacao');
+    await renderLegislacoes();
+    showToast(editId?'Legislação atualizada!':'Legislação cadastrada!');
+  } catch(e) {
+    showToast('Erro ao salvar legislação.','error'); console.error(e);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-device-floppy"></i> Salvar';
+  }
+}
+
+async function excluirLegislacao(id) {
+  if (!confirm('Excluir esta legislação?')) return;
+  var l = LEGISLACOES.find(function(x){return x.id===id;});
+  try {
+    if (l && l.arquivo_path) await sb.storage.from('documentos').remove([l.arquivo_path]);
+    await sb.from('cp_legislacoes').delete().eq('id', id);
+    showToast('Legislação excluída.');
+    await renderLegislacoes();
+  } catch(e) { showToast('Erro ao excluir.','error'); }
+}
+
 var profissionaisTemp = [];
 var cursoStatusAtual = 'planejamento';
 
