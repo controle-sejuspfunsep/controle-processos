@@ -196,14 +196,12 @@ tr:hover td{background:#f8fafc}
   </div>
   <div class="main">
     <div class="sidebar">
-      <div class="nav-item active" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
-      <div class="nav-item" onclick="showPage('processos',this)"><i class="ti ti-files"></i> Processos</div>
-      <div class="nav-item" onclick="showPage('novo',this);resetForm()"><i class="ti ti-plus"></i> Novo Processo</div>
-      <div class="nav-item" onclick="showPage('fluxograma',this)"><i class="ti ti-git-branch"></i> Fluxograma</div>
-      <div class="nav-item" onclick="showPage('financeiro',this)"><i class="ti ti-building-bank"></i> Núcleo Financeiro</div>
-      <div class="nav-item" onclick="showPage('contratos',this)"><i class="ti ti-file-contract"></i> 📋 Núcleo de Contratos <span id="badge-contratos" style="display:none;background:#c0392b;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px">!</span></div>
-      <div class="nav-item" onclick="showPage('hora-aula',this)"><i class="ti ti-school"></i> 🎓 Núcleo Administrativo</div>
-      <div class="nav-item" onclick="showPage('pessoal',this)"><i class="ti ti-id-badge"></i> 👤 Núcleo de Pessoal</div>
+      <div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
+      <div class="nav-item" id="nav-fluxograma" onclick="showPage('fluxograma',this)"><i class="ti ti-git-branch"></i> Fluxograma</div>
+      <div class="nav-item" id="nav-processos" onclick="showPage('processos',this)"><i class="ti ti-files"></i> Processos</div>
+      <div class="nav-item" id="nav-adm" onclick="showPage('adm',this)"><i class="ti ti-school"></i> 🎓 Núcleo Administrativo</div>
+      <div class="nav-item" id="nav-financeiro" onclick="showPage('financeiro',this)"><i class="ti ti-building-bank"></i> Núcleo Financeiro</div>
+      <div class="nav-item" id="nav-contratos" onclick="showPage('contratos',this)"><i class="ti ti-file-contract"></i> 📋 Núcleo de Contratos e Convênios <span id="badge-contratos" style="display:none;background:#c0392b;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px">!</span></div>
       <div class="nav-item" id="nav-usuarios" style="display:none" onclick="showPage('usuarios',this)"><i class="ti ti-users"></i> Usuários</div>
     </div>
     <div class="content">
@@ -261,7 +259,7 @@ tr:hover td{background:#f8fafc}
           <div style="display:flex;gap:8px">
             <button class="btn-secondary" onclick="exportarExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
             <button class="btn-secondary" onclick="exportarPDF()"><i class="ti ti-file-type-pdf"></i> PDF</button>
-            <button class="btn-primary" onclick="showPage('novo',document.querySelectorAll('.nav-item')[2]);resetForm()"><i class="ti ti-plus"></i> Novo Processo</button>
+            <button class="btn-primary" onclick="showPage('novo', document.getElementById('nav-processos'));resetForm()"><i class="ti ti-plus"></i> Novo Processo</button>
           </div>
         </div>
         <div class="filter-bar">
@@ -570,108 +568,159 @@ tr:hover td{background:#f8fafc}
 
 
       <!-- NÚCLEO ADMINISTRATIVO — HORA-AULA -->
-      <div id="page-hora-aula" class="page">
+      <div id="page-adm" class="page">
         <div class="section-header">
-          <span class="section-title">🎓 Núcleo Administrativo — Processos de Hora-Aula</span>
-          <div style="display:flex;gap:8px">
+          <span class="section-title">🎓 Núcleo Administrativo</span>
+        </div>
+
+        <!-- Abas internas -->
+        <div style="display:flex;gap:0;border-bottom:2px solid #e0e0e0;margin-bottom:18px">
+          <button id="adm-tab-geral" onclick="admTab('geral')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;color:#1a3a5c;border-bottom:3px solid #1a3a5c;cursor:pointer;margin-bottom:-2px">Visão Geral</button>
+          <button id="adm-tab-pagamento" onclick="admTab('pagamento')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Processos de Pagamento</button>
+          <button id="adm-tab-diaria" onclick="admTab('diaria')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Processos de Diária</button>
+          <button id="adm-tab-hora-aula" onclick="admTab('hora-aula')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Processos de Hora-Aula</button>
+        </div>
+
+        <!-- VISÃO GERAL -->
+        <div id="adm-painel-geral">
+          <div class="metrics" id="adm-geral-metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px"></div>
+          <div class="card" style="padding:16px">
+            <div class="sec-label">Montante total por Unidade Gestora</div>
+            <div id="adm-geral-ug" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px"></div>
+          </div>
+        </div>
+
+        <!-- PROCESSOS DE PAGAMENTO -->
+        <div id="adm-painel-pagamento" style="display:none">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+            <button class="btn-primary" onclick="abrirModalPagamento()"><i class="ti ti-plus"></i> Novo processo de pagamento</button>
+          </div>
+          <div class="metrics" id="pag-metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px"></div>
+          <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+            <input type="text" id="pag-busca" placeholder="Buscar beneficiário, descrição..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:240px" oninput="renderTabelaPagamentos()">
+            <select id="pag-filtro-status" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaPagamentos()">
+              <option value="">Todos os status</option>
+              <option value="solicitado">Solicitado</option>
+              <option value="autorizado">Autorizado</option>
+              <option value="pago">Pago</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+            <select id="pag-filtro-orgao" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaPagamentos()">
+              <option value="">Todos os órgãos</option>
+              <option>SEJUSP</option><option>FUNSEP</option>
+            </select>
+          </div>
+          <div class="card" style="padding:0">
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Beneficiário</th><th>Tipo</th><th>Processo vinculado</th><th>Órgão</th>
+                  <th style="text-align:right">Valor</th><th>Data</th><th>Status</th><th></th>
+                </tr></thead>
+                <tbody id="tb-pagamentos"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROCESSOS DE DIÁRIA -->
+        <div id="adm-painel-diaria" style="display:none">
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px">
+            <button class="btn-secondary" onclick="exportarDiariasExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+            <button class="btn-primary" onclick="abrirModalDiaria()"><i class="ti ti-plus"></i> Nova diária</button>
+          </div>
+
+          <!-- Cards -->
+          <div class="metrics" id="ps-metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px"></div>
+
+          <!-- Filtros -->
+          <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+            <input type="text" id="ps-busca" placeholder="Buscar viajante, destino..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:240px" oninput="renderTabelaDiarias()">
+            <select id="ps-filtro-status" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaDiarias()">
+              <option value="">Todos</option>
+              <option value="solicitado">Solicitado</option>
+              <option value="autorizado">Autorizado</option>
+              <option value="em_viagem">Em viagem</option>
+              <option value="concluido">Concluído</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+
+          <div class="card" style="padding:0">
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Viajante</th><th>Função</th><th>Curso vinculado</th>
+                  <th>Origem → Destino</th><th>Período</th><th>Diárias</th>
+                  <th style="text-align:right">Valor total</th><th>Status</th><th></th>
+                </tr></thead>
+                <tbody id="tb-diarias"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROCESSOS DE HORA-AULA -->
+        <div id="adm-painel-hora-aula" style="display:none">
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px">
             <button class="btn-secondary" onclick="exportarHoraAulaExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
             <button class="btn-secondary" onclick="exportarHoraAulaPDF()"><i class="ti ti-file-type-pdf"></i> PDF</button>
             <button class="btn-primary" onclick="abrirModalCurso()"><i class="ti ti-plus"></i> Novo processo</button>
           </div>
-        </div>
 
-        <!-- Alertas de prazo -->
-        <div id="ha-alertas-wrap" style="display:none;margin-bottom:16px">
-          <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:10px;padding:14px 16px">
-            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:8px"><i class="ti ti-clock-exclamation"></i> Processos com prazos críticos</div>
-            <div id="ha-alertas-lista"></div>
+          <!-- Alertas de prazo -->
+          <div id="ha-alertas-wrap" style="display:none;margin-bottom:16px">
+            <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:10px;padding:14px 16px">
+              <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:8px"><i class="ti ti-clock-exclamation"></i> Processos com prazos críticos</div>
+              <div id="ha-alertas-lista"></div>
+            </div>
           </div>
-        </div>
 
-        <!-- Cards dashboard -->
-        <div class="metrics" id="ha-metrics" style="grid-template-columns:repeat(5,1fr);margin-bottom:18px"></div>
+          <!-- Cards dashboard -->
+          <div class="metrics" id="ha-metrics" style="grid-template-columns:repeat(5,1fr);margin-bottom:18px"></div>
 
-        <!-- Gráficos -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
-          <div class="card" style="padding:16px">
-            <div class="sec-label">Status dos processos</div>
-            <canvas id="ha-chart-status" style="max-height:180px"></canvas>
+          <!-- Gráficos -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+            <div class="card" style="padding:16px">
+              <div class="sec-label">Status dos processos</div>
+              <canvas id="ha-chart-status" style="max-height:180px"></canvas>
+            </div>
+            <div class="card" style="padding:16px">
+              <div class="sec-label">Valor total por fase</div>
+              <canvas id="ha-chart-valor" style="max-height:180px"></canvas>
+            </div>
           </div>
-          <div class="card" style="padding:16px">
-            <div class="sec-label">Valor total por fase</div>
-            <canvas id="ha-chart-valor" style="max-height:180px"></canvas>
+
+          <!-- Filtros -->
+          <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+            <input type="text" id="ha-busca" placeholder="Buscar curso..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:240px" oninput="renderTabelaHoraAula()">
+            <select id="ha-filtro-status" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaHoraAula()">
+              <option value="">Todos os status</option>
+              <option value="planejamento">Planejamento</option>
+              <option value="analise">Em análise</option>
+              <option value="execucao">Em execução</option>
+              <option value="pagamento">Aguardando pagamento</option>
+              <option value="concluido">Concluído</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+            <select id="ha-filtro-eixo" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaHoraAula()">
+              <option value="">Todos os eixos</option>
+              <option>EVC</option><option>VPSP</option><option>FISP</option>
+              <option>PNSE</option><option>MQVPSP</option><option>RMV</option><option>EVM</option>
+            </select>
           </div>
-        </div>
 
-        <!-- Filtros -->
-        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-          <input type="text" id="ha-busca" placeholder="Buscar curso..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:240px" oninput="renderTabelaHoraAula()">
-          <select id="ha-filtro-status" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaHoraAula()">
-            <option value="">Todos os status</option>
-            <option value="planejamento">Planejamento</option>
-            <option value="analise">Em análise</option>
-            <option value="execucao">Em execução</option>
-            <option value="pagamento">Aguardando pagamento</option>
-            <option value="concluido">Concluído</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
-          <select id="ha-filtro-eixo" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaHoraAula()">
-            <option value="">Todos os eixos</option>
-            <option>EVC</option><option>VPSP</option><option>FISP</option>
-            <option>PNSE</option><option>MQVPSP</option><option>RMV</option><option>EVM</option>
-          </select>
-        </div>
-
-        <div class="card" style="padding:0">
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th>Curso / Capacitação</th><th>Eixo</th><th>Fase</th>
-                <th>Início</th><th>CH Total</th><th>Profissionais</th>
-                <th style="text-align:right">Valor estimado</th><th>Status</th><th></th>
-              </tr></thead>
-              <tbody id="tb-hora-aula"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- NÚCLEO DE PESSOAL — DIÁRIAS -->
-      <div id="page-pessoal" class="page">
-        <div class="section-header">
-          <span class="section-title">👤 Núcleo de Pessoal — Diárias e Passagens</span>
-          <div style="display:flex;gap:8px">
-            <button class="btn-secondary" onclick="exportarDiariasExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
-            <button class="btn-primary" onclick="abrirModalDiaria()"><i class="ti ti-plus"></i> Nova diária</button>
-          </div>
-        </div>
-
-        <!-- Cards -->
-        <div class="metrics" id="ps-metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px"></div>
-
-        <!-- Filtros -->
-        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-          <input type="text" id="ps-busca" placeholder="Buscar viajante, destino..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:240px" oninput="renderTabelaDiarias()">
-          <select id="ps-filtro-status" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaDiarias()">
-            <option value="">Todos</option>
-            <option value="solicitado">Solicitado</option>
-            <option value="autorizado">Autorizado</option>
-            <option value="em_viagem">Em viagem</option>
-            <option value="concluido">Concluído</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
-        </div>
-
-        <div class="card" style="padding:0">
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th>Viajante</th><th>Função</th><th>Curso vinculado</th>
-                <th>Origem → Destino</th><th>Período</th><th>Diárias</th>
-                <th style="text-align:right">Valor total</th><th>Status</th><th></th>
-              </tr></thead>
-              <tbody id="tb-diarias"></tbody>
-            </table>
+          <div class="card" style="padding:0">
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Curso / Capacitação</th><th>Eixo</th><th>Fase</th>
+                  <th>Início</th><th>CH Total</th><th>Profissionais</th>
+                  <th style="text-align:right">Valor estimado</th><th>Status</th><th></th>
+                </tr></thead>
+                <tbody id="tb-hora-aula"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -995,6 +1044,12 @@ tr:hover td{background:#f8fafc}
                   <input type="number" class="form-input" id="curso-turmas" value="1" min="1" oninput="recalcularHoraAula()"></div>
                 <div class="form-group"><label>Nº de alunos por turma</label>
                   <input type="number" class="form-input" id="curso-alunos" placeholder="25-40 (presencial)"></div>
+                <div class="form-group"><label>Unidade Gestora (UG)</label>
+                  <select class="form-input" id="curso-orgao">
+                    <option value="SEJUSP">SEJUSP</option>
+                    <option value="FUNSEP">FUNSEP</option>
+                  </select>
+                </div>
                 <div class="form-group full"><label>Órgão requisitante</label>
                   <input type="text" class="form-input" id="curso-orgao-req" placeholder="Ex: PCAP, PMAP, CBMAP..."></div>
                 <div class="form-group full"><label>Observações</label>
@@ -1078,6 +1133,12 @@ tr:hover td{background:#f8fafc}
                   <option value="conferencista">Conferencista</option>
                 </select>
               </div>
+              <div class="form-group"><label>Unidade Gestora (UG)</label>
+                <select class="form-input" id="d-ug">
+                  <option value="SEJUSP">SEJUSP</option>
+                  <option value="FUNSEP">FUNSEP</option>
+                </select>
+              </div>
               <div class="form-group"><label>Órgão de origem</label>
                 <input type="text" class="form-input" id="d-orgao" placeholder="Ex: PCAP, PMSP..."></div>
               <div class="form-group full"><label>Curso vinculado</label>
@@ -1127,6 +1188,62 @@ tr:hover td{background:#f8fafc}
           <div class="modal-footer">
             <button class="btn-secondary" onclick="fecharModal('m-diaria')">Cancelar</button>
             <button class="btn-primary" onclick="salvarDiaria()"><i class="ti ti-device-floppy"></i> Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL PROCESSO DE PAGAMENTO -->
+      <div class="modal-overlay" id="m-pagamento">
+        <div class="modal-box" style="width:640px">
+          <div class="modal-header">
+            <div><div class="modal-title" id="m-pagamento-title">Novo processo de pagamento</div>
+            <div class="modal-sub">Núcleo Administrativo — Processos de Pagamento</div></div>
+            <button class="modal-close" onclick="fecharModal('m-pagamento')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="pagamento-edit-id">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group full"><label>Beneficiário</label>
+                <input type="text" class="form-input" id="pag-beneficiario" placeholder="Nome ou razão social"></div>
+              <div class="form-group"><label>CPF/CNPJ</label>
+                <input type="text" class="form-input" id="pag-cpf-cnpj" placeholder="000.000.000-00"></div>
+              <div class="form-group"><label>Unidade Gestora (UG)</label>
+                <select class="form-input" id="pag-orgao">
+                  <option value="SEJUSP">SEJUSP</option>
+                  <option value="FUNSEP">FUNSEP</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Processo vinculado</label>
+                <input type="text" class="form-input" id="pag-processo" placeholder="Nº SIGA/PRODOC"></div>
+              <div class="form-group"><label>Tipo</label>
+                <select class="form-input" id="pag-tipo">
+                  <option value="fornecedor">Fornecedor</option>
+                  <option value="prestador">Prestador de Serviço</option>
+                  <option value="ressarcimento">Ressarcimento</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>Descrição</label>
+                <input type="text" class="form-input" id="pag-descricao" placeholder="Ex: Aquisição de material de expediente"></div>
+              <div class="form-group"><label>Valor (R$)</label>
+                <input type="number" step="0.01" class="form-input" id="pag-valor" placeholder="Ex: 1500,00"></div>
+              <div class="form-group"><label>Data</label>
+                <input type="date" class="form-input" id="pag-data"></div>
+              <div class="form-group"><label>Status</label>
+                <select class="form-input" id="pag-status">
+                  <option value="solicitado">Solicitado</option>
+                  <option value="autorizado">Autorizado</option>
+                  <option value="pago">Pago</option>
+                  <option value="cancelado">Cancelado</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>Observações</label>
+                <input type="text" class="form-input" id="pag-obs" placeholder="Opcional"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-pagamento')">Cancelar</button>
+            <button class="btn-primary" onclick="salvarPagamento()"><i class="ti ti-device-floppy"></i> Salvar</button>
           </div>
         </div>
       </div>
@@ -1582,8 +1699,7 @@ function showPage(id, el) {
   if (id==='fluxograma') renderFluxograma();
   if (id==='financeiro') renderFinanceiro();
   if (id==='contratos') renderContratos();
-  if (id==='hora-aula') renderHoraAula();
-  if (id==='pessoal') renderPessoal();
+  if (id==='adm') admTab(admAbaAtiva || 'geral');
 }
 
 function selectOrgao(o) {
@@ -1663,7 +1779,7 @@ async function salvarProcesso() {
     }
     await carregarProcessos();
     resetForm();
-    showPage('processos', document.querySelectorAll('.nav-item')[1]);
+    showPage('processos', document.getElementById('nav-processos'));
     renderDashboard(); renderTable();
   } catch(e) { showToast('Erro ao salvar processo.','error'); }
 }
@@ -1678,9 +1794,8 @@ function editarProcesso(id) {
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   var pageNovo = document.getElementById('page-novo');
   if (pageNovo) pageNovo.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(function(n){
-    if (n.textContent.trim().indexOf('Novo Processo') >= 0) n.classList.add('active');
-  });
+  var navProcessosEl = document.getElementById('nav-processos');
+  if (navProcessosEl) navProcessosEl.classList.add('active');
 
   document.getElementById('form-title').textContent = 'Editar Processo';
   empenhosProcessoTemp = p.empenhos ? JSON.parse(JSON.stringify(p.empenhos)) : [];
@@ -2252,6 +2367,68 @@ function finTab(aba) {
   if (btnE) { btnE.style.color = aba==='empenhos'?'#1a3a5c':'#888'; btnE.style.borderBottom = aba==='empenhos'?'3px solid #1a3a5c':'none'; }
   if (aba==='contas') renderContas();
   else renderEmpenhos();
+}
+
+// ── ABAS NUCLEO ADMINISTRATIVO ──
+function admTab(aba) {
+  admAbaAtiva = aba;
+  document.getElementById('adm-painel-geral').style.display     = aba==='geral'      ? 'block' : 'none';
+  document.getElementById('adm-painel-pagamento').style.display = aba==='pagamento'  ? 'block' : 'none';
+  document.getElementById('adm-painel-diaria').style.display    = aba==='diaria'     ? 'block' : 'none';
+  document.getElementById('adm-painel-hora-aula').style.display = aba==='hora-aula'  ? 'block' : 'none';
+  ['geral','pagamento','diaria','hora-aula'].forEach(function(a){
+    var btn = document.getElementById('adm-tab-'+a);
+    if (btn) {
+      btn.style.color = aba===a?'#1a3a5c':'#888';
+      btn.style.borderBottom = aba===a?'3px solid #1a3a5c':'none';
+      btn.style.fontWeight = aba===a?'700':'500';
+    }
+  });
+  if (aba==='geral') renderAdmGeral();
+  else if (aba==='pagamento') renderPagamentos();
+  else if (aba==='diaria') renderPessoal();
+  else if (aba==='hora-aula') renderHoraAula();
+}
+
+async function renderAdmGeral() {
+  await carregarCursos();
+  await carregarDiarias();
+  await carregarPagamentos();
+
+  var todos = [];
+  CURSOS.forEach(function(c){ todos.push({valor: parseFloat(c.valor_estimado||0), concluido: c.status==='concluido', cancelado: c.status==='cancelado', orgao: c.orgao||''}); });
+  DIARIAS.forEach(function(d){ todos.push({valor: parseFloat(d.valor_total||0), concluido: d.status==='concluido', cancelado: d.status==='cancelado', orgao: d.orgao||''}); });
+  PAGAMENTOS.forEach(function(p){ todos.push({valor: parseFloat(p.valor||0), concluido: p.status==='pago', cancelado: p.status==='cancelado', orgao: p.orgao||''}); });
+
+  var total       = todos.length;
+  var concluidos  = todos.filter(function(t){return t.concluido;}).length;
+  var cancelados  = todos.filter(function(t){return t.cancelado;}).length;
+  var emAndamento = total - concluidos - cancelados;
+  var valorTotal  = todos.reduce(function(s,t){return s+t.valor;},0);
+
+  var el = document.getElementById('adm-geral-metrics');
+  if (el) {
+    el.innerHTML =
+      '<div class="metric"><div class="metric-val">'+total+'</div><div class="metric-lbl">Total de processos</div></div>'+
+      '<div class="metric"><div class="metric-val" style="color:#6d28d9">'+emAndamento+'</div><div class="metric-lbl">Em andamento</div></div>'+
+      '<div class="metric"><div class="metric-val" style="color:#166534">'+concluidos+'</div><div class="metric-lbl">Concluídos</div></div>'+
+      '<div class="metric"><div class="metric-val" style="font-size:14px;color:#1a3a5c">'+fmtMoeda(valorTotal)+'</div><div class="metric-lbl">Valor total</div></div>';
+  }
+
+  var ugEl = document.getElementById('adm-geral-ug');
+  if (ugEl) {
+    var ugs = ['SEJUSP','FUNSEP'];
+    ugEl.innerHTML = ugs.map(function(u){
+      var itens  = todos.filter(function(t){return t.orgao===u;});
+      var vTotal = itens.reduce(function(s,t){return s+t.valor;},0);
+      var cor = u==='SEJUSP' ? '#1a3a5c' : '#0a6640';
+      return '<div style="background:#f7f7f7;border-radius:10px;padding:14px 16px">'+
+        '<div style="font-size:12px;color:#888;margin-bottom:4px">'+u+'</div>'+
+        '<div style="font-size:20px;font-weight:700;color:'+cor+'">'+fmtMoeda(vTotal)+'</div>'+
+        '<div style="font-size:11px;color:#888;margin-top:4px">'+itens.length+' processo(s)</div>'+
+      '</div>';
+    }).join('');
+  }
 }
 
 // ── CALCULAR SALDO ──
@@ -3326,6 +3503,8 @@ renderContratos = async function() {
 
 var CURSOS = [];
 var DIARIAS = [];
+var PAGAMENTOS = [];
+var admAbaAtiva = 'geral';
 var profissionaisTemp = [];
 var cursoStatusAtual = 'planejamento';
 
@@ -3719,6 +3898,7 @@ function abrirModalCurso(id) {
       document.getElementById('curso-fim').value          = c.data_fim||'';
       document.getElementById('curso-turmas').value       = c.num_turmas||1;
       document.getElementById('curso-alunos').value       = c.num_alunos||'';
+      document.getElementById('curso-orgao').value         = c.orgao||'SEJUSP';
       document.getElementById('curso-orgao-req').value    = c.orgao_req||'';
       document.getElementById('curso-obs').value          = c.obs||'';
       cursoStatusAtual = c.status||'planejamento';
@@ -3733,6 +3913,7 @@ function abrirModalCurso(id) {
     document.getElementById('curso-ano-repasse').value='';
     document.getElementById('curso-modalidade').value='presencial';
     document.getElementById('curso-turmas').value='1';
+    document.getElementById('curso-orgao').value='SEJUSP';
   }
 
   setCursoStatus(cursoStatusAtual);
@@ -3752,6 +3933,7 @@ async function salvarCurso() {
 
   var payload = {
     nome, eixo,
+    orgao:         document.getElementById('curso-orgao').value,
     acao:          document.getElementById('curso-acao').value,
     ano_repasse:   document.getElementById('curso-ano-repasse').value,
     modalidade:    document.getElementById('curso-modalidade').value,
@@ -3882,6 +4064,7 @@ function abrirModalDiaria(id) {
       document.getElementById('d-nome').value   = d.nome||'';
       document.getElementById('d-cpf').value    = d.cpf||'';
       document.getElementById('d-funcao').value = d.funcao||'instrutor';
+      document.getElementById('d-ug').value     = d.orgao||'SEJUSP';
       document.getElementById('d-orgao').value  = d.orgao_origem||'';
       document.getElementById('d-curso').value  = d.curso_id||'';
       document.getElementById('d-origem').value = d.origem||'';
@@ -3899,6 +4082,7 @@ function abrirModalDiaria(id) {
       var el=document.getElementById(f); if(el) el.value='';
     });
     document.getElementById('d-funcao').value='instrutor';
+    document.getElementById('d-ug').value='SEJUSP';
     document.getElementById('d-passagem').value='nao';
     document.getElementById('d-status').value='solicitado';
     var prev = document.getElementById('d-calc-preview');
@@ -3922,6 +4106,7 @@ async function salvarDiaria() {
   var payload = {
     nome, cpf: document.getElementById('d-cpf').value.trim(),
     funcao:    document.getElementById('d-funcao').value,
+    orgao:     document.getElementById('d-ug').value,
     orgao_origem: document.getElementById('d-orgao').value.trim(),
     curso_id:  document.getElementById('d-curso').value||null,
     origem:    document.getElementById('d-origem').value.trim(),
@@ -3953,6 +4138,139 @@ async function excluirDiaria(id) {
   await carregarDiarias();
   renderPessoal();
   showToast('Excluída.');
+}
+
+// ════════════════════════════════════════════════
+// NÚCLEO ADMINISTRATIVO — PROCESSOS DE PAGAMENTO
+// ════════════════════════════════════════════════
+var PAG_STATUS   = { solicitado:{bg:'#dbeafe',cor:'#1e40af'}, autorizado:{bg:'#fef3c7',cor:'#92400e'},
+  pago:{bg:'#dcfce7',cor:'#166534'}, cancelado:{bg:'#fee2e2',cor:'#991b1b'} };
+var PAG_STATUS_L = { solicitado:'Solicitado', autorizado:'Autorizado', pago:'Pago', cancelado:'Cancelado' };
+var PAG_TIPO_L   = { fornecedor:'Fornecedor', prestador:'Prestador de Serviço', ressarcimento:'Ressarcimento', outro:'Outro' };
+
+async function carregarPagamentos() {
+  try {
+    var r = await sb.from('cp_pagamentos').select('*').order('created_at', {ascending:false});
+    if (!r.error) PAGAMENTOS = r.data||[];
+  } catch(e) { PAGAMENTOS = []; }
+}
+
+async function renderPagamentos() {
+  await carregarPagamentos();
+  renderMetricsPagamentos();
+  renderTabelaPagamentos();
+}
+
+function renderMetricsPagamentos() {
+  var total      = PAGAMENTOS.length;
+  var andamento  = PAGAMENTOS.filter(function(p){return p.status==='solicitado'||p.status==='autorizado';}).length;
+  var pagos      = PAGAMENTOS.filter(function(p){return p.status==='pago';}).length;
+  var valorTotal = PAGAMENTOS.reduce(function(s,p){return s+parseFloat(p.valor||0);},0);
+  var el = document.getElementById('pag-metrics');
+  if (!el) return;
+  el.innerHTML =
+    '<div class="metric"><div class="metric-val">'+total+'</div><div class="metric-lbl">Total processos</div></div>'+
+    '<div class="metric"><div class="metric-val" style="color:#1e40af">'+andamento+'</div><div class="metric-lbl">Em andamento</div></div>'+
+    '<div class="metric"><div class="metric-val" style="color:#166534">'+pagos+'</div><div class="metric-lbl">Pagos</div></div>'+
+    '<div class="metric"><div class="metric-val" style="font-size:14px;color:#1a3a5c">'+fmtMoeda(valorTotal)+'</div><div class="metric-lbl">Valor total</div></div>';
+}
+
+function renderTabelaPagamentos() {
+  var busca  = (document.getElementById('pag-busca')||{value:''}).value.toLowerCase();
+  var status = (document.getElementById('pag-filtro-status')||{value:''}).value;
+  var orgao  = (document.getElementById('pag-filtro-orgao')||{value:''}).value;
+
+  var lista = PAGAMENTOS.filter(function(p){
+    var mb = !busca||(p.beneficiario||'').toLowerCase().indexOf(busca)>-1||(p.descricao||'').toLowerCase().indexOf(busca)>-1;
+    return mb && (!status||p.status===status) && (!orgao||p.orgao===orgao);
+  });
+
+  var tb = document.getElementById('tb-pagamentos');
+  if (!tb) return;
+  if (!lista.length) { tb.innerHTML='<tr><td colspan="8"><div class="empty"><i class="ti ti-cash-off"></i><p>Nenhum processo de pagamento encontrado.</p></div></td></tr>'; return; }
+
+  tb.innerHTML = lista.map(function(p){
+    var sit = PAG_STATUS[p.status]||{bg:'#f3f4f6',cor:'#374151'};
+    return '<tr>'+
+      '<td style="font-weight:500">'+(p.beneficiario||'—')+'</td>'+
+      '<td style="font-size:12px">'+(PAG_TIPO_L[p.tipo]||p.tipo||'—')+'</td>'+
+      '<td style="font-size:12px">'+(p.processo_vinculado||'—')+'</td>'+
+      '<td style="font-size:12px">'+(p.orgao||'—')+'</td>'+
+      '<td style="text-align:right;font-weight:700;color:#1a3a5c">'+fmtMoeda(p.valor||0)+'</td>'+
+      '<td style="font-size:11px;color:#888">'+fmtDataBR(p.data_pagamento)+'</td>'+
+      '<td><span style="background:'+sit.bg+';color:'+sit.cor+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">'+(PAG_STATUS_L[p.status]||p.status)+'</span></td>'+
+      '<td style="text-align:right;white-space:nowrap">'+
+        '<button class="btn-icon" onclick="editarPagamento(\''+p.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
+        '<button class="btn-icon" onclick="excluirPagamento(\''+p.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
+      '</td></tr>';
+  }).join('');
+}
+
+function abrirModalPagamento(id) {
+  document.getElementById('pagamento-edit-id').value = id||'';
+  document.getElementById('m-pagamento-title').textContent = id?'Editar processo de pagamento':'Novo processo de pagamento';
+  if (id) {
+    var p = PAGAMENTOS.find(function(x){return x.id===id;});
+    if (p) {
+      document.getElementById('pag-beneficiario').value = p.beneficiario||'';
+      document.getElementById('pag-cpf-cnpj').value      = p.cpf_cnpj||'';
+      document.getElementById('pag-orgao').value         = p.orgao||'SEJUSP';
+      document.getElementById('pag-processo').value      = p.processo_vinculado||'';
+      document.getElementById('pag-tipo').value          = p.tipo||'fornecedor';
+      document.getElementById('pag-descricao').value     = p.descricao||'';
+      document.getElementById('pag-valor').value         = p.valor||'';
+      document.getElementById('pag-data').value          = p.data_pagamento||'';
+      document.getElementById('pag-status').value        = p.status||'solicitado';
+      document.getElementById('pag-obs').value           = p.obs||'';
+    }
+  } else {
+    ['pag-beneficiario','pag-cpf-cnpj','pag-processo','pag-descricao','pag-valor','pag-data','pag-obs'].forEach(function(f){
+      var el=document.getElementById(f); if(el) el.value='';
+    });
+    document.getElementById('pag-orgao').value  = 'SEJUSP';
+    document.getElementById('pag-tipo').value   = 'fornecedor';
+    document.getElementById('pag-status').value = 'solicitado';
+  }
+  abrirModal('m-pagamento');
+}
+
+function editarPagamento(id) { abrirModalPagamento(id); }
+
+async function salvarPagamento() {
+  var beneficiario = document.getElementById('pag-beneficiario').value.trim();
+  var orgao = document.getElementById('pag-orgao').value;
+  if (!beneficiario||!orgao) { showToast('Informe o beneficiário e a Unidade Gestora.','error'); return; }
+
+  var payload = {
+    beneficiario: beneficiario,
+    orgao: orgao,
+    cpf_cnpj:           document.getElementById('pag-cpf-cnpj').value.trim(),
+    processo_vinculado: document.getElementById('pag-processo').value.trim(),
+    tipo:               document.getElementById('pag-tipo').value,
+    descricao:          document.getElementById('pag-descricao').value.trim(),
+    valor:              parseFloat(document.getElementById('pag-valor').value)||0,
+    data_pagamento:     document.getElementById('pag-data').value||null,
+    status:             document.getElementById('pag-status').value,
+    obs:                document.getElementById('pag-obs').value.trim(),
+  };
+
+  var editId = document.getElementById('pagamento-edit-id').value;
+  try {
+    if (editId) await sb.from('cp_pagamentos').update(payload).eq('id', editId);
+    else await sb.from('cp_pagamentos').insert(payload);
+    fecharModal('m-pagamento');
+    await carregarPagamentos();
+    renderPagamentos();
+    showToast(editId?'Processo de pagamento atualizado!':'Processo de pagamento criado!');
+  } catch(e) { showToast('Erro ao salvar.','error'); console.error(e); }
+}
+
+async function excluirPagamento(id) {
+  if (!confirm('Excluir este processo de pagamento?')) return;
+  await sb.from('cp_pagamentos').delete().eq('id', id);
+  await carregarPagamentos();
+  renderPagamentos();
+  showToast('Excluído.');
 }
 
 // ── EXPORTAÇÕES ──
