@@ -462,7 +462,7 @@ tr:hover td{background:#f8fafc}
       <div id="page-financeiro" class="page">
         <div class="section-header">
           <span class="section-title">🏦 Núcleo Financeiro</span>
-          <button class="btn-primary" id="fin-btn-add" onclick="abrirModalConta()"><i class="ti ti-plus"></i> Nova conta</button>
+          <button class="btn-primary" id="fin-btn-add" onclick="abrirModalEmpenho()"><i class="ti ti-plus"></i> Novo Empenho</button>
         </div>
 
         <!-- Dashboard Núcleo Financeiro -->
@@ -482,12 +482,12 @@ tr:hover td{background:#f8fafc}
 
         <!-- Abas internas -->
         <div style="display:flex;gap:0;border-bottom:2px solid #e0e0e0;margin-bottom:18px">
-          <button id="fin-tab-contas" onclick="finTab('contas')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;color:#1a3a5c;border-bottom:3px solid #1a3a5c;cursor:pointer;margin-bottom:-2px">Contas</button>
-          <button id="fin-tab-empenhos" onclick="finTab('empenhos')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Empenhos</button>
+          <button id="fin-tab-empenhos" onclick="finTab('empenhos')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;color:#1a3a5c;border-bottom:3px solid #1a3a5c;cursor:pointer;margin-bottom:-2px">Empenhos</button>
+          <button id="fin-tab-contas" onclick="finTab('contas')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Contas</button>
         </div>
 
         <!-- CONTAS -->
-        <div id="fin-painel-contas">
+        <div id="fin-painel-contas" style="display:none">
           <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
             <input type="text" id="fin-busca-conta" placeholder="Buscar conta..." class="filter-bar" style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:220px" oninput="renderContas()">
             <select id="fin-filtro-eixo" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderContas()">
@@ -517,7 +517,7 @@ tr:hover td{background:#f8fafc}
         </div>
 
         <!-- EMPENHOS -->
-        <div id="fin-painel-empenhos" style="display:none">
+        <div id="fin-painel-empenhos">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
             <input type="text" id="fin-busca-emp" placeholder="Buscar empenho..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:260px" oninput="renderEmpenhos()">
           </div>
@@ -2411,7 +2411,7 @@ function selecionarEtapa(id) {
 // ════════════════════════════════════════════════
 var CONTAS_FIN = [];
 var EMPENHOS_FIN = [];
-var finAbaAtiva = 'contas';
+var finAbaAtiva = 'empenhos';
 
 var ND_LABELS = { '3':'3 — Serviços de Terceiros', '4':'4 — Equipamentos e Material Permanente' };
 
@@ -2522,8 +2522,9 @@ function fmtMoeda(v) {
 async function renderFinanceiro() {
   await carregarFinanceiro();
   renderMetricsFinanceiro();
-  renderContas();
   popularFiltroAno();
+  if (finAbaAtiva === 'contas') renderContas();
+  else renderEmpenhos();
 }
 
 function popularFiltroAno() {
