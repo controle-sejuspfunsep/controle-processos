@@ -462,7 +462,7 @@ tr:hover td{background:#f8fafc}
       <div id="page-financeiro" class="page">
         <div class="section-header">
           <span class="section-title">🏦 Núcleo Financeiro</span>
-          <button class="btn-primary" onclick="abrirModalConta()"><i class="ti ti-plus"></i> Nova conta</button>
+          <button class="btn-primary" id="fin-btn-add" onclick="abrirModalConta()"><i class="ti ti-plus"></i> Nova conta</button>
         </div>
 
         <!-- Dashboard Núcleo Financeiro -->
@@ -492,8 +492,8 @@ tr:hover td{background:#f8fafc}
             <input type="text" id="fin-busca-conta" placeholder="Buscar conta..." class="filter-bar" style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:220px" oninput="renderContas()">
             <select id="fin-filtro-eixo" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderContas()">
               <option value="">Todos os eixos</option>
-              <option>EVC</option><option>VPSP</option><option>FISP</option>
-              <option>PNSE</option><option>MQVPSP</option><option>RMV</option><option>EVM</option>
+              <option>ECV</option><option>VPS</option><option>VPSP</option><option>FISP</option>
+              <option>PNSE</option><option>MQVPSP</option><option>MQV</option><option>RMV</option><option>RMVI</option><option>EVM</option>
             </select>
             <select id="fin-filtro-ano" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderContas()">
               <option value="">Todos os anos</option>
@@ -520,13 +520,12 @@ tr:hover td{background:#f8fafc}
         <div id="fin-painel-empenhos" style="display:none">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
             <input type="text" id="fin-busca-emp" placeholder="Buscar empenho..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:260px" oninput="renderEmpenhos()">
-            <button class="btn-primary" onclick="abrirModalEmpenho()"><i class="ti ti-plus"></i> Novo empenho</button>
           </div>
           <div class="card" style="padding:0">
             <div class="table-wrap">
               <table>
                 <thead><tr>
-                  <th>Nº Empenho</th><th>Processo SIGA</th><th>Conta</th><th>Eixo</th><th>ND</th>
+                  <th>Nº Documento</th><th>UG</th><th>Credor</th><th>Processo</th><th>Conta</th><th>Eixo</th><th>ND</th>
                   <th style="text-align:right">Valor</th><th>Data</th><th>Situação</th><th></th>
                 </tr></thead>
                 <tbody id="tb-empenhos-fin"></tbody>
@@ -835,8 +834,8 @@ tr:hover td{background:#f8fafc}
               <div class="form-group"><label>Eixo</label>
                 <select id="conta-eixo" class="form-input">
                   <option value="">Selecione...</option>
-                  <option>EVC</option><option>VPSP</option><option>FISP</option>
-                  <option>PNSE</option><option>MQVPSP</option><option>RMV</option><option>EVM</option>
+                  <option>ECV</option><option>VPS</option><option>VPSP</option><option>FISP</option>
+                  <option>PNSE</option><option>MQVPSP</option><option>MQV</option><option>RMV</option><option>RMVI</option><option>EVM</option>
                 </select>
               </div>
               <div class="form-group full"><label>Ação</label><input type="text" id="conta-acao" class="form-input" placeholder="Ex: Aquisição de armamento"></div>
@@ -865,23 +864,38 @@ tr:hover td{background:#f8fafc}
           <div class="modal-body">
             <input type="hidden" id="emp-fin-edit-id">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-              <div class="form-group"><label>Número do empenho</label><input type="text" id="emp-fin-numero" class="form-input" placeholder="Ex: 2024NE00123"></div>
+              <div class="form-group"><label>Número do documento</label><input type="text" id="emp-fin-numero" class="form-input" placeholder="Ex: 2026NE00435"></div>
               <div class="form-group"><label>Data do empenho</label><input type="date" id="emp-fin-data" class="form-input"></div>
-              <div class="form-group full"><label>Processo SIGA vinculado</label>
+              <div class="form-group"><label>Unidade Gestora</label>
+                <select id="emp-fin-ug" class="form-input" onchange="atualizarCamposUG()">
+                  <option value="SEJUSP">SEJUSP</option>
+                  <option value="FUNSEP">FUNSEP</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Tipo de empenho</label>
+                <select id="emp-fin-tipo" class="form-input">
+                  <option value="Ordinário">Ordinário</option>
+                  <option value="Estimativo">Estimativo</option>
+                  <option value="Global">Global</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>Credor</label><input type="text" id="emp-fin-credor" class="form-input" placeholder="Ex: 26363873000152 - DUBAI AUTOMOVEIS LTDA"></div>
+              <div class="form-group full"><label>Processo vinculado</label>
                 <select id="emp-fin-processo" class="form-input" onchange="preencherCamposProcesso()">
                   <option value="">Selecionar processo...</option>
                 </select>
               </div>
-              <div class="form-group full"><label>Conta orçamentária</label>
+              <div class="form-group full" id="emp-grupo-conta"><label>Conta corrente (conta orçamentária FUNSEP)</label>
                 <select id="emp-fin-conta" class="form-input" onchange="atualizarInfoConta()">
                   <option value="">Selecionar conta...</option>
                 </select>
               </div>
               <!-- Info da conta selecionada -->
               <div class="form-group full" id="emp-info-conta" style="display:none">
-                <div style="background:#f0f4f8;border-radius:8px;padding:10px 14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                <div style="background:#f0f4f8;border-radius:8px;padding:10px 14px;font-size:12px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
                   <div><div style="color:#888;font-size:10px;font-weight:700">EIXO</div><div id="emp-info-eixo" style="font-weight:600"></div></div>
-                  <div><div style="color:#888;font-size:10px;font-weight:700">ND</div><div id="emp-info-nd" style="font-weight:600"></div></div>
+                  <div><div style="color:#888;font-size:10px;font-weight:700">NATUREZA (ND)</div><div id="emp-info-nd" style="font-weight:600"></div></div>
+                  <div><div style="color:#888;font-size:10px;font-weight:700">ANO REPASSE</div><div id="emp-info-ano" style="font-weight:600"></div></div>
                   <div><div style="color:#888;font-size:10px;font-weight:700">SALDO DISPONÍVEL</div><div id="emp-info-saldo" style="font-weight:700;color:#0a6640"></div></div>
                 </div>
               </div>
@@ -2421,6 +2435,11 @@ function finTab(aba) {
   var btnE = document.getElementById('fin-tab-empenhos');
   if (btnC) { btnC.style.color = aba==='contas'?'#1a3a5c':'#888'; btnC.style.borderBottom = aba==='contas'?'3px solid #1a3a5c':'none'; }
   if (btnE) { btnE.style.color = aba==='empenhos'?'#1a3a5c':'#888'; btnE.style.borderBottom = aba==='empenhos'?'3px solid #1a3a5c':'none'; }
+  var btnAdd = document.getElementById('fin-btn-add');
+  if (btnAdd) {
+    if (aba==='empenhos') { btnAdd.innerHTML = '<i class="ti ti-plus"></i> Novo Empenho'; btnAdd.setAttribute('onclick','abrirModalEmpenho()'); }
+    else { btnAdd.innerHTML = '<i class="ti ti-plus"></i> Nova conta'; btnAdd.setAttribute('onclick','abrirModalConta()'); }
+  }
   if (aba==='contas') renderContas();
   else renderEmpenhos();
 }
@@ -2575,9 +2594,24 @@ function renderContas() {
       '<td style="text-align:right;white-space:nowrap">'+
         '<button class="btn-icon" onclick="editarConta(\''+c.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
         '<button class="btn-icon" onclick="verEmpenhosConta(\''+c.id+'\')" title="Ver empenhos" style="color:#0a6640"><i class="ti ti-list"></i></button>'+
+        '<button class="btn-icon" onclick="excluirConta(\''+c.id+'\')" title="Excluir conta" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
       '</td>'+
     '</tr>';
   }).join('');
+}
+
+async function excluirConta(id) {
+  var empVinculados = EMPENHOS_FIN.filter(function(e){ return e.conta_id===id; }).length;
+  if (empVinculados > 0) {
+    showToast('Esta conta tem '+empVinculados+' empenho(s) vinculado(s) e não pode ser excluída. Exclua os empenhos primeiro.','error');
+    return;
+  }
+  if (!confirm('Excluir esta conta? Essa ação não pode ser desfeita.')) return;
+  try {
+    await sb.from('fin_contas').delete().eq('id', id);
+    showToast('Conta excluída.');
+    await renderFinanceiro();
+  } catch(e) { showToast('Erro ao excluir conta.','error'); }
 }
 
 function renderEmpenhos(filtroContaId) {
@@ -2592,7 +2626,7 @@ function renderEmpenhos(filtroContaId) {
   if (!tb) return;
 
   if (!lista.length) {
-    tb.innerHTML='<tr><td colspan="9"><div class="empty"><i class="ti ti-file-invoice"></i><p>Nenhum empenho cadastrado.</p></div></td></tr>';
+    tb.innerHTML='<tr><td colspan="11"><div class="empty"><i class="ti ti-file-invoice"></i><p>Nenhum empenho cadastrado.</p></div></td></tr>';
     return;
   }
 
@@ -2602,6 +2636,8 @@ function renderEmpenhos(filtroContaId) {
     var sitBg  = {ativo:'#dcfce7',anulado:'#fee2e2',liquidado:'#dbeafe'};
     return '<tr>'+
       '<td style="font-weight:600;color:#1a3a5c">'+(e.numero||'—')+'</td>'+
+      '<td style="font-size:12px">'+(e.ug?'<span class=\"tag\" style=\"background:'+(e.ug==='FUNSEP'?'#d1fae5;color:#065f46':'#dbeafe;color:#1e40af')+'\">'+e.ug+'</span>':'—')+'</td>'+
+      '<td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(e.credor||'')+'">'+(e.credor||'—')+'</td>'+
       '<td style="font-size:12px;color:#555">'+(e.processo_siga||'—')+'</td>'+
       '<td style="font-size:12px">'+(conta?conta.numero:'—')+'</td>'+
       '<td><span class="tag" style="background:#0e749022;color:#0e7490;font-weight:700">'+(conta?conta.eixo:'—')+'</span></td>'+
@@ -2698,24 +2734,47 @@ function abrirModalEmpenho(id) {
     if (e) {
       document.getElementById('emp-fin-numero').value   = e.numero||'';
       document.getElementById('emp-fin-data').value     = e.data_empenho||'';
+      document.getElementById('emp-fin-ug').value       = e.ug||'FUNSEP';
+      document.getElementById('emp-fin-credor').value   = e.credor||'';
+      document.getElementById('emp-fin-tipo').value     = e.tipo_empenho||'Ordinário';
       document.getElementById('emp-fin-processo').value = e.processo_siga||'';
       document.getElementById('emp-fin-conta').value    = e.conta_id||'';
       document.getElementById('emp-fin-valor').value    = e.valor||'';
       document.getElementById('emp-fin-situacao').value = e.situacao||'ativo';
       document.getElementById('emp-fin-obs').value      = e.obs||'';
+      atualizarCamposUG();
       atualizarInfoConta();
     }
   } else {
-    ['emp-fin-numero','emp-fin-obs'].forEach(function(f){document.getElementById(f).value='';});
+    ['emp-fin-numero','emp-fin-obs','emp-fin-credor'].forEach(function(f){document.getElementById(f).value='';});
     document.getElementById('emp-fin-data').value     = new Date().toISOString().split('T')[0];
+    document.getElementById('emp-fin-ug').value       = 'FUNSEP';
+    document.getElementById('emp-fin-tipo').value     = 'Ordinário';
     document.getElementById('emp-fin-processo').value = '';
     document.getElementById('emp-fin-conta').value    = '';
     document.getElementById('emp-fin-valor').value    = '';
     document.getElementById('emp-fin-situacao').value = 'ativo';
     document.getElementById('emp-info-conta').style.display='none';
     document.getElementById('emp-alerta-saldo').style.display='none';
+    atualizarCamposUG();
   }
   abrirModal('m-empenho-fin');
+}
+
+// Mostra o campo "Conta corrente" (FUNSEP) apenas quando a UG for FUNSEP,
+// ja que as contas cadastradas no sistema sao especificamente as contas FUNSEP.
+function atualizarCamposUG() {
+  var ug = document.getElementById('emp-fin-ug').value;
+  var grupoConta = document.getElementById('emp-grupo-conta');
+  if (!grupoConta) return;
+  if (ug === 'FUNSEP') {
+    grupoConta.style.display = '';
+  } else {
+    grupoConta.style.display = 'none';
+    document.getElementById('emp-fin-conta').value = '';
+    document.getElementById('emp-info-conta').style.display = 'none';
+    document.getElementById('emp-alerta-saldo').style.display = 'none';
+  }
 }
 
 function editarEmpenhoFin(id) { abrirModalEmpenho(id); }
@@ -2730,6 +2789,7 @@ function atualizarInfoConta() {
   var saldoDisp = parseFloat(c.saldo_conta||0) - empTotal;
   document.getElementById('emp-info-eixo').textContent  = c.eixo||'—';
   document.getElementById('emp-info-nd').textContent    = 'ND '+c.nd;
+  document.getElementById('emp-info-ano').textContent   = c.ano_repasse||'—';
   document.getElementById('emp-info-saldo').textContent = fmtMoeda(saldoDisp);
   document.getElementById('emp-info-saldo').style.color = saldoDisp<=0?'#c0392b':'#0a6640';
   info.style.display='block';
@@ -2764,17 +2824,21 @@ function preencherCamposProcesso() {
 async function salvarEmpenhoFin() {
   var numero  = document.getElementById('emp-fin-numero').value.trim();
   var data    = document.getElementById('emp-fin-data').value;
-  var contaId = document.getElementById('emp-fin-conta').value;
+  var ug      = document.getElementById('emp-fin-ug').value;
+  var credor  = document.getElementById('emp-fin-credor').value.trim();
+  var tipo    = document.getElementById('emp-fin-tipo').value;
+  var contaId = ug==='FUNSEP' ? document.getElementById('emp-fin-conta').value : '';
   var valor   = parseFloat(document.getElementById('emp-fin-valor').value)||0;
   var sit     = document.getElementById('emp-fin-situacao').value;
   var obs     = document.getElementById('emp-fin-obs').value.trim();
   var siga    = document.getElementById('emp-fin-processo').value;
   var editId  = document.getElementById('emp-fin-edit-id').value;
 
-  if (!numero||!contaId||!valor||!data) { showToast('Preencha número, conta, valor e data.','error'); return; }
+  if (!numero||!credor||!valor||!data) { showToast('Preencha número do documento, credor, valor e data.','error'); return; }
+  if (ug==='FUNSEP' && !contaId) { showToast('Para empenhos do FUNSEP, selecione a conta corrente.','error'); return; }
 
-  // Verificar saldo
-  var c = CONTAS_FIN.find(function(x){return x.id===contaId;});
+  // Verificar saldo (apenas quando ha conta vinculada, ou seja, FUNSEP)
+  var c = contaId ? CONTAS_FIN.find(function(x){return x.id===contaId;}) : null;
   if (c && sit==='ativo') {
     var empTotal = calcularSaldoUtilizar(contaId);
     if (editId) {
@@ -2787,7 +2851,7 @@ async function salvarEmpenhoFin() {
     }
   }
 
-  var payload = { numero, data_empenho:data, conta_id:contaId, valor, situacao:sit, obs, processo_siga:siga||null };
+  var payload = { numero, data_empenho:data, ug, credor, tipo_empenho:tipo, conta_id:contaId||null, valor, situacao:sit, obs, processo_siga:siga||null };
 
   try {
     if (editId) {
@@ -2795,7 +2859,7 @@ async function salvarEmpenhoFin() {
       showToast('Empenho atualizado! Saldo recalculado.');
     } else {
       await sb.from('fin_empenhos').insert(payload);
-      showToast('Empenho registrado! Saldo debitado automaticamente.');
+      showToast(ug==='FUNSEP' ? 'Empenho registrado! Saldo da conta debitado automaticamente.' : 'Empenho registrado!');
     }
     fecharModal('m-empenho-fin');
     await renderFinanceiro();
