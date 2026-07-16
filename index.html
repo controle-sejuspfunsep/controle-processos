@@ -1007,6 +1007,18 @@ tr:hover td{background:#f8fafc}
           <div class="modal-body">
             <input type="hidden" id="cont-edit-id">
 
+            <!-- PROCESSO VINCULADO -->
+            <div class="sec-label" style="margin-bottom:10px">Processo vinculado</div>
+            <div style="margin-bottom:14px">
+              <div class="form-group full">
+                <label>Processo SIGA vinculado</label>
+                <select class="form-input" id="cont-siga" onchange="preencherCamposContrato()">
+                  <option value="">Selecionar processo...</option>
+                </select>
+                <div id="cont-processo-info" style="font-size:11px;margin-top:4px;color:#888">Selecione o processo para preencher automaticamente Órgão, Objeto e PRODOC.</div>
+              </div>
+            </div>
+
             <!-- IDENTIFICAÇÃO -->
             <div class="sec-label" style="margin-bottom:10px">1. Identificação</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
@@ -1055,12 +1067,6 @@ tr:hover td{background:#f8fafc}
             <!-- VÍNCULOS -->
             <div class="sec-label" style="margin-bottom:10px">3. Vínculos processuais</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-              <div class="form-group">
-                <label>Processo SIGA vinculado</label>
-                <select class="form-input" id="cont-siga">
-                  <option value="">Selecionar processo...</option>
-                </select>
-              </div>
               <div class="form-group"><label>Nº PRODOC</label><input type="text" class="form-input" id="cont-prodoc" placeholder="Ex: PRODOC-123/2024"></div>
               <div class="form-group"><label>Portaria de fiscalização</label><input type="text" class="form-input" id="cont-portaria" placeholder="Ex: Portaria nº 001/2024"></div>
             </div>
@@ -3474,6 +3480,39 @@ function calcularDiasRestantes() {
   }
 }
 
+function atualizarInfoProcessoContrato() {
+  var siga = document.getElementById('cont-siga').value;
+  var info = document.getElementById('cont-processo-info');
+  if (!info) return;
+  if (!siga) { info.textContent = 'Selecione o processo para preencher automaticamente Órgão, Objeto e PRODOC.'; info.style.color = '#888'; info.style.fontWeight = 'normal'; return; }
+  var proc = processos.find(function(p){ return p.siga===siga; });
+  if (!proc) { info.textContent = ''; return; }
+  var d = dadosDerivadosProcesso(proc);
+  info.innerHTML = '<i class="ti ti-link"></i> Vinculado ao processo ' + proc.siga + ' — PRODOC: ' + (d.prodoc || 'ainda não informado no Processo de Pagamento vinculado');
+  info.style.color = d.prodoc ? '#0a6640' : '#b45309';
+  info.style.fontWeight = '700';
+}
+
+function preencherCamposContrato() {
+  var siga = document.getElementById('cont-siga').value;
+  if (!siga) { atualizarInfoProcessoContrato(); return; }
+  var proc = processos.find(function(p){ return p.siga===siga; });
+  if (!proc) { atualizarInfoProcessoContrato(); return; }
+
+  // Assume as informacoes ja cadastradas no Processo, para o usuario so
+  // completar o que for especifico do contrato.
+  document.getElementById('cont-orgao').value  = proc.orgao || '';
+  document.getElementById('cont-objeto').value = proc.objeto || '';
+  if (proc.tipo === 'Compras')  document.getElementById('cont-tipo').value = 'aquisicao';
+  else if (proc.tipo === 'Serviços') document.getElementById('cont-tipo').value = 'servico';
+  toggleServicoContinuo();
+
+  var d = dadosDerivadosProcesso(proc);
+  if (d.prodoc) document.getElementById('cont-prodoc').value = d.prodoc;
+
+  atualizarInfoProcessoContrato();
+}
+
 function popularSelectSIGAContrato() {
   var sel = document.getElementById('cont-siga');
   if (!sel) return;
@@ -3522,11 +3561,12 @@ function renderAditivosTemp() {
   }).join('');
 }
 
-function abrirModalContrato(id) {
+async function abrirModalContrato(id) {
   aditivosTemp = [];
   document.getElementById('cont-edit-id').value = id||'';
   document.getElementById('m-cont-title').textContent = id ? 'Editar contrato' : 'Novo contrato';
 
+  await carregarPagamentos();
   popularSelectSIGAContrato();
 
   if (id) {
@@ -3553,6 +3593,7 @@ function abrirModalContrato(id) {
       document.getElementById('cont-rescisao').value   = c.rescisao||'amigavel';
       document.getElementById('cont-obs').value        = c.obs||'';
       aditivosTemp = c.aditivos ? JSON.parse(JSON.stringify(c.aditivos)) : [];
+      atualizarInfoProcessoContrato();
     }
   } else {
     ['cont-numero','cont-empresa','cont-empenho','cont-valor','cont-pub',
@@ -3564,6 +3605,8 @@ function abrirModalContrato(id) {
     document.getElementById('cont-tipo').value='';
     document.getElementById('cont-continuo').value='nao';
     document.getElementById('cont-status').value='vigente';
+    document.getElementById('cont-siga').value='';
+    atualizarInfoProcessoContrato();
   }
 
   toggleServicoContinuo();
