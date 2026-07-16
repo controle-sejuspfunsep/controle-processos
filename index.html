@@ -744,7 +744,7 @@ tr:hover td{background:#f8fafc}
             <div class="table-wrap">
               <table>
                 <thead><tr>
-                  <th>Beneficiário</th><th>Tipo</th><th>Processo vinculado</th><th>Órgão</th>
+                  <th>PRODOC</th><th>Objeto</th><th>Beneficiário</th><th>Tipo</th><th>Processo (SIGA)</th><th>Órgão</th>
                   <th style="text-align:right">Valor</th><th>Data</th><th>Status</th><th></th>
                 </tr></thead>
                 <tbody id="tb-pagamentos"></tbody>
@@ -4892,6 +4892,14 @@ function renderMetricsPagamentos() {
     '<div class="metric"><div class="metric-val" style="font-size:14px;color:#1a3a5c">'+fmtMoeda(valorTotal)+'</div><div class="metric-lbl">Valor total</div></div>';
 }
 
+function objetoDoProcessoVinculado(p) {
+  if (p.processo_id && typeof processos!=='undefined') {
+    var proc = processos.find(function(x){ return x.id==p.processo_id; });
+    if (proc && proc.objeto) return proc.objeto;
+  }
+  return p.descricao || '';
+}
+
 function renderTabelaPagamentos() {
   var busca  = (document.getElementById('pag-busca')||{value:''}).value.toLowerCase();
   var status = (document.getElementById('pag-filtro-status')||{value:''}).value;
@@ -4904,11 +4912,13 @@ function renderTabelaPagamentos() {
 
   var tb = document.getElementById('tb-pagamentos');
   if (!tb) return;
-  if (!lista.length) { tb.innerHTML='<tr><td colspan="8"><div class="empty"><i class="ti ti-cash-off"></i><p>Nenhum processo de pagamento encontrado.</p></div></td></tr>'; return; }
+  if (!lista.length) { tb.innerHTML='<tr><td colspan="10"><div class="empty"><i class="ti ti-cash-off"></i><p>Nenhum processo de pagamento encontrado.</p></div></td></tr>'; return; }
 
   tb.innerHTML = lista.map(function(p){
     var sit = PAG_STATUS[p.status]||{bg:'#f3f4f6',cor:'#374151'};
     return '<tr>'+
+      '<td style="font-size:12px;font-weight:600;color:#1a3a5c">'+(p.prodoc||'—')+'</td>'+
+      '<td style="font-size:12px;max-width:260px">'+((objetoDoProcessoVinculado(p)||'—').substring(0,80))+'</td>'+
       '<td style="font-weight:500">'+(p.beneficiario||'—')+'</td>'+
       '<td style="font-size:12px">'+(PAG_TIPO_L[p.tipo]||p.tipo||'—')+'</td>'+
       '<td style="font-size:12px">'+(p.processo_vinculado||'—')+'</td>'+
