@@ -939,6 +939,12 @@ tr:hover td{background:#f8fafc}
           <div class="modal-body">
             <input type="hidden" id="emp-fin-edit-id">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="form-group full"><label>Processo vinculado</label>
+                <select id="emp-fin-processo" class="form-input" onchange="preencherCamposProcesso()">
+                  <option value="">Selecionar processo...</option>
+                </select>
+                <div id="emp-processo-info" style="font-size:11px;margin-top:4px;color:#888">Selecione o processo para preencher Unidade Gestora e Credor automaticamente.</div>
+              </div>
               <div class="form-group"><label>Número do documento</label><input type="text" id="emp-fin-numero" class="form-input" placeholder="Ex: 2026NE00435"></div>
               <div class="form-group"><label>Data do empenho</label><input type="date" id="emp-fin-data" class="form-input"></div>
               <div class="form-group"><label>Unidade Gestora</label>
@@ -955,11 +961,6 @@ tr:hover td{background:#f8fafc}
                 </select>
               </div>
               <div class="form-group full"><label>Credor</label><input type="text" id="emp-fin-credor" class="form-input" placeholder="Ex: 26363873000152 - DUBAI AUTOMOVEIS LTDA"></div>
-              <div class="form-group full"><label>Processo vinculado</label>
-                <select id="emp-fin-processo" class="form-input" onchange="preencherCamposProcesso()">
-                  <option value="">Selecionar processo...</option>
-                </select>
-              </div>
               <div class="form-group full" id="emp-grupo-conta"><label>Conta corrente (conta orçamentária FUNSEP)</label>
                 <select id="emp-fin-conta" class="form-input" onchange="atualizarInfoConta()">
                   <option value="">Selecionar conta...</option>
@@ -3044,9 +3045,14 @@ async function salvarConta() {
 }
 
 // ── MODAL EMPENHO ──
-function abrirModalEmpenho(id) {
+async function abrirModalEmpenho(id) {
   document.getElementById('emp-fin-edit-id').value = id||'';
   document.getElementById('m-emp-fin-title').textContent = id ? 'Editar empenho' : 'Novo empenho';
+
+  // Garantir dados atualizados para poder derivar Credor e PRODOC a partir
+  // do processo selecionado (Contratos e Pagamentos vinculados).
+  await carregarContratos();
+  await carregarPagamentos();
 
   // Popular select de processos
   var selProc = document.getElementById('emp-fin-processo');
@@ -3077,6 +3083,7 @@ function abrirModalEmpenho(id) {
       document.getElementById('emp-fin-obs').value      = e.obs||'';
       atualizarCamposUG();
       atualizarInfoConta();
+      atualizarInfoProcessoEmpenho();
     }
   } else {
     ['emp-fin-numero','emp-fin-obs','emp-fin-credor'].forEach(function(f){document.getElementById(f).value='';});
@@ -3090,6 +3097,7 @@ function abrirModalEmpenho(id) {
     document.getElementById('emp-info-conta').style.display='none';
     document.getElementById('emp-alerta-saldo').style.display='none';
     atualizarCamposUG();
+    atualizarInfoProcessoEmpenho();
   }
   abrirModal('m-empenho-fin');
 }
@@ -3147,11 +3155,38 @@ function validarSaldoEmpenho() {
   alerta.style.display = valor > saldoDisp ? 'block' : 'none';
 }
 
+function atualizarInfoProcessoEmpenho() {
+  var siga = document.getElementById('emp-fin-processo').value;
+  var info = document.getElementById('emp-processo-info');
+  if (!info) return;
+  if (!siga) { info.textContent = 'Selecione o processo para preencher Unidade Gestora e Credor automaticamente.'; info.style.color = '#888'; info.style.fontWeight = 'normal'; return; }
+  var proc = processos.find(function(p){return p.siga===siga;});
+  if (!proc) { info.textContent = ''; return; }
+  var d = dadosDerivadosProcesso(proc);
+  info.innerHTML = '<i class="ti ti-file-text"></i> PRODOC: ' + (d.prodoc || 'ainda não informado no Processo de Pagamento vinculado');
+  info.style.color = d.prodoc ? '#0a6640' : '#b45309';
+  info.style.fontWeight = '700';
+}
+
 function preencherCamposProcesso() {
   var siga = document.getElementById('emp-fin-processo').value;
-  // Preencher número de empenho se o processo já tiver
+  if (!siga) { atualizarInfoProcessoEmpenho(); return; }
   var proc = processos.find(function(p){return p.siga===siga;});
-  if (proc && proc.empenho) document.getElementById('emp-fin-numero').value = proc.empenho;
+  if (!proc) { atualizarInfoProcessoEmpenho(); return; }
+
+  // Unidade Gestora: assume a do processo
+  document.getElementById('emp-fin-ug').value = proc.orgao || 'SEJUSP';
+  atualizarCamposUG();
+
+  // Credor: assume a Contratada do Nucleo de Contratos vinculada a este
+  // processo; se ainda nao houver contrato, usa o beneficiario do Processo
+  // de Pagamento vinculado.
+  var d = dadosDerivadosProcesso(proc);
+  var pagamentoVinc = (typeof PAGAMENTOS!=='undefined') ? PAGAMENTOS.find(function(pg){ return pg.processo_id==proc.id; }) : null;
+  var credor = d.contratada || (pagamentoVinc ? pagamentoVinc.beneficiario : '') || '';
+  if (credor) document.getElementById('emp-fin-credor').value = credor;
+
+  atualizarInfoProcessoEmpenho();
 }
 
 async function salvarEmpenhoFin() {
