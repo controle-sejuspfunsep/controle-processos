@@ -1363,7 +1363,7 @@ tr:hover td{background:#f8fafc}
                 <select class="form-input" id="pag-processo-select" onchange="preencherDadosDoProcesso()">
                   <option value="">Selecione o processo já cadastrado...</option>
                 </select>
-                <div style="font-size:11px;color:#888;margin-top:4px">Ao selecionar, a Unidade Gestora e a Descrição são preenchidas automaticamente com as informações do processo. Complete apenas o que faltar.</div>
+                <div id="pag-processo-confirmacao" style="font-size:11px;margin-top:4px;color:#888">Selecione um processo para vincular a este pagamento.</div>
               </div>
               <div class="form-group"><label>Número PRODOC</label>
                 <input type="text" class="form-input" id="pag-prodoc" placeholder="Nº do processo PRODOC"></div>
@@ -4938,12 +4938,20 @@ async function popularSelectProcessoPagamento(valorSelecionadoId) {
 function preencherDadosDoProcesso() {
   var sel = document.getElementById('pag-processo-select');
   var id = sel ? sel.value : '';
+  var conf = document.getElementById('pag-processo-confirmacao');
   document.getElementById('pag-processo-id').value = id;
-  if (!id) return;
+  if (!id) {
+    if (conf) { conf.textContent = 'Selecione um processo para vincular a este pagamento.'; conf.style.color = '#888'; }
+    return;
+  }
   var p = processos.find(function(x){ return x.id==id; });
-  if (!p) return;
+  if (!p) {
+    if (conf) { conf.textContent = 'Não foi possível encontrar esse processo (tente selecionar de novo).'; conf.style.color = '#c0392b'; }
+    return;
+  }
   document.getElementById('pag-orgao').value    = p.orgao || 'SEJUSP';
   document.getElementById('pag-descricao').value = p.objeto || '';
+  if (conf) { conf.innerHTML = '<i class="ti ti-link"></i> Vinculado a: ' + (p.siga||'sem SIGA'); conf.style.color = '#0a6640'; conf.style.fontWeight = '700'; }
 }
 
 async function abrirModalPagamento(id) {
@@ -4951,7 +4959,7 @@ async function abrirModalPagamento(id) {
   document.getElementById('m-pagamento-title').textContent = id?'Editar processo de pagamento':'Novo processo de pagamento';
   await popularSelectProcessoPagamento('');
   if (id) {
-    var p = PAGAMENTOS.find(function(x){return x.id===id;});
+    var p = PAGAMENTOS.find(function(x){return x.id==id;});
     if (p) {
       document.getElementById('pag-beneficiario').value    = p.beneficiario||'';
       document.getElementById('pag-cpf-cnpj').value         = p.cpf_cnpj||'';
@@ -4985,7 +4993,7 @@ async function salvarPagamento() {
   var orgao = document.getElementById('pag-orgao').value;
   if (!beneficiario||!orgao) { showToast('Informe o beneficiário e a Unidade Gestora.','error'); return; }
 
-  var processoId  = document.getElementById('pag-processo-id').value || null;
+  var processoId  = document.getElementById('pag-processo-select').value || null;
   var processoSel = processoId ? processos.find(function(x){ return x.id==processoId; }) : null;
 
   var payload = {
