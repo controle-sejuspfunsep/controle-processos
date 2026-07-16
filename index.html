@@ -2314,7 +2314,7 @@ function abrirEscolhaRelatorio() {
 
 function dadosDerivadosProcesso(p) {
   var contrato = (typeof CONTRATOS!=='undefined') ? CONTRATOS.find(function(c){ return c.processo_siga && p.siga && c.processo_siga===p.siga; }) : null;
-  var pagamento = (typeof PAGAMENTOS!=='undefined') ? PAGAMENTOS.find(function(pg){ return pg.processo_id===p.id; }) : null;
+  var pagamento = (typeof PAGAMENTOS!=='undefined') ? PAGAMENTOS.find(function(pg){ return pg.processo_id==p.id; }) : null;
   var valorEmpenhos = (typeof EMPENHOS_FIN!=='undefined') ? EMPENHOS_FIN
     .filter(function(e){ return e.processo_siga && p.siga && e.processo_siga===p.siga && e.situacao!=='anulado'; })
     .reduce(function(s,e){ return s+parseFloat(e.valor||0); }, 0) : 0;
@@ -4940,7 +4940,7 @@ function preencherDadosDoProcesso() {
   var id = sel ? sel.value : '';
   document.getElementById('pag-processo-id').value = id;
   if (!id) return;
-  var p = processos.find(function(x){ return x.id===id; });
+  var p = processos.find(function(x){ return x.id==id; });
   if (!p) return;
   document.getElementById('pag-orgao').value    = p.orgao || 'SEJUSP';
   document.getElementById('pag-descricao').value = p.objeto || '';
@@ -4986,7 +4986,7 @@ async function salvarPagamento() {
   if (!beneficiario||!orgao) { showToast('Informe o beneficiário e a Unidade Gestora.','error'); return; }
 
   var processoId  = document.getElementById('pag-processo-id').value || null;
-  var processoSel = processoId ? processos.find(function(x){ return x.id===processoId; }) : null;
+  var processoSel = processoId ? processos.find(function(x){ return x.id==processoId; }) : null;
 
   var payload = {
     beneficiario: beneficiario,
