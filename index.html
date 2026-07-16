@@ -3536,6 +3536,16 @@ function preencherCamposContrato() {
   else if (proc.tipo === 'Serviços') document.getElementById('cont-tipo').value = 'servico';
   toggleServicoContinuo();
 
+  // Empresa/Credor/Beneficiario: assume o que ja foi cadastrado no
+  // Processo de Pagamento vinculado a este processo.
+  var pagamentoVinc = (typeof PAGAMENTOS!=='undefined') ? PAGAMENTOS.find(function(pg){ return pg.processo_id==proc.id; }) : null;
+  if (pagamentoVinc && pagamentoVinc.beneficiario) document.getElementById('cont-empresa').value = pagamentoVinc.beneficiario;
+
+  // Nota de empenho: assume a que ja foi cadastrada no Nucleo Financeiro
+  // para este mesmo processo (SIGA).
+  var empenhoVinc = (typeof EMPENHOS_FIN!=='undefined') ? EMPENHOS_FIN.find(function(e){ return e.processo_siga===proc.siga && e.situacao!=='anulado'; }) : null;
+  if (empenhoVinc && empenhoVinc.numero) document.getElementById('cont-empenho').value = empenhoVinc.numero;
+
   var d = dadosDerivadosProcesso(proc);
   if (d.prodoc) document.getElementById('cont-prodoc').value = d.prodoc;
 
@@ -3596,6 +3606,7 @@ async function abrirModalContrato(id) {
   document.getElementById('m-cont-title').textContent = id ? 'Editar contrato' : 'Novo contrato';
 
   await carregarPagamentos();
+  await carregarFinanceiro();
   popularSelectSIGAContrato();
 
   if (id) {
