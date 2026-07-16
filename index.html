@@ -5005,13 +5005,15 @@ async function salvarPagamento() {
 
   var editId = document.getElementById('pagamento-edit-id').value;
   try {
-    if (editId) await sb.from('cp_pagamentos').update(payload).eq('id', editId);
-    else await sb.from('cp_pagamentos').insert(payload);
+    var r;
+    if (editId) r = await sb.from('cp_pagamentos').update(payload).eq('id', editId);
+    else r = await sb.from('cp_pagamentos').insert(payload);
+    if (r.error) throw r.error;
     fecharModal('m-pagamento');
     await carregarPagamentos();
     renderPagamentos();
     showToast(editId?'Processo de pagamento atualizado!':'Processo de pagamento criado!');
-  } catch(e) { showToast('Erro ao salvar.','error'); console.error(e); }
+  } catch(e) { showToast('Erro ao salvar: ' + (e.message||'verifique os campos'), 'error'); console.error(e); }
 }
 
 async function excluirPagamento(id) {
