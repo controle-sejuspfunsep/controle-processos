@@ -320,6 +320,7 @@ tr:hover td{background:#f8fafc}
         </div>
         <div class="filter-bar">
           <input type="text" placeholder="Buscar por objeto, ofício, SIGA..." id="filter-search" oninput="renderTable()"/>
+          <select id="filter-ano" onchange="renderTable()"></select>
           <select id="filter-orgao" onchange="renderTable()">
             <option value="">Todos os órgãos</option>
             <option>SEJUSP</option>
@@ -339,8 +340,8 @@ tr:hover td{background:#f8fafc}
             <table>
               <thead>
                 <tr>
-                  <th>Órgão</th><th>Ofício</th><th>SIGA</th><th>PRODOC</th>
-                  <th>Objeto</th><th>Tipo</th><th>Status</th><th>Ações</th>
+                  <th>SIGA</th><th>PRODOC</th><th>Objeto</th><th>Órgão</th>
+                  <th>Tipo</th><th>Status</th><th>Ações</th>
                 </tr>
               </thead>
               <tbody id="processo-tbody"></tbody>
@@ -1894,8 +1895,34 @@ function renderDashboard() {
   document.getElementById('recent-list').innerHTML = html;
 }
 
-function renderTable() {
+var pagamentosCarregadosUmaVez = false;
+
+function numeroSiga(siga) {
+  var m = (siga||'').match(/\d+/);
+  return m ? parseInt(m[0], 10) : -1;
+}
+
+function popularFiltroAnoProcessos() {
+  var sel = document.getElementById('filter-ano');
+  if (!sel) return;
+  var anosExistentes = processos.map(function(p){ return p.ano_exercicio; }).filter(Boolean);
+  var anos = Array.from(new Set(anosExistentes)).sort(function(a,b){ return String(b).localeCompare(String(a)); });
+  var valorAtual = sel.value;
+  sel.innerHTML = '<option value="">Todos os anos</option>' + anos.map(function(a){ return '<option value="'+a+'">'+a+'</option>'; }).join('');
+  if (valorAtual && anos.indexOf(valorAtual)>-1) {
+    sel.value = valorAtual;
+  } else if (anos.length) {
+    sel.value = anos[0];
+  }
+}
+
+async function renderTable() {
+  if (!pagamentosCarregadosUmaVez) { pagamentosCarregadosUmaVez = true; await carregarPagamentos(); }
+  var selAno = document.getElementById('filter-ano');
+  if (selAno && !selAno.options.length) popularFiltroAnoProcessos();
+
   var search  = (document.getElementById('filter-search')||{value:''}).value.toLowerCase();
+  var ano     = (document.getElementById('filter-ano')||{value:''}).value;
   var orgao   = (document.getElementById('filter-orgao')||{value:''}).value;
   var status  = (document.getElementById('filter-status')||{value:''}).value;
 
@@ -1903,21 +1930,23 @@ function renderTable() {
     var ms = !search || p.objeto.toLowerCase().indexOf(search)>=0 ||
              (p.oficio||'').toLowerCase().indexOf(search)>=0 ||
              (p.siga||'').toLowerCase().indexOf(search)>=0 ||
-             (p.prodoc||'').toLowerCase().indexOf(search)>=0;
-    return ms && (!orgao||p.orgao===orgao) && (!status||p.status===status);
+             (dadosDerivadosProcesso(p).prodoc||'').toLowerCase().indexOf(search)>=0;
+    return ms && (!ano||p.ano_exercicio===ano) && (!orgao||p.orgao===orgao) && (!status||p.status===status);
   });
+
+  filtered.sort(function(a,b){ return numeroSiga(b.siga) - numeroSiga(a.siga); });
 
   var tbody = document.getElementById('processo-tbody');
   if (!tbody) return;
-  if (!filtered.length) { tbody.innerHTML='<tr><td colspan="8" class="empty">Nenhum processo encontrado.</td></tr>'; return; }
+  if (!filtered.length) { tbody.innerHTML='<tr><td colspan="7" class="empty">Nenhum processo encontrado.</td></tr>'; return; }
 
   tbody.innerHTML = filtered.map(function(p) {
+    var prodoc = dadosDerivadosProcesso(p).prodoc;
     return '<tr>'+
-      '<td><span class="tag tag-'+p.orgao.toLowerCase()+'">'+p.orgao+'</span></td>'+
-      '<td>'+(p.oficio||'—')+'</td>'+
       '<td>'+(p.siga||'—')+'</td>'+
-      '<td>'+(p.prodoc||'—')+'</td>'+
+      '<td>'+(prodoc||'—')+'</td>'+
       '<td title="'+p.objeto+'">'+p.objeto.substring(0,45)+(p.objeto.length>45?'...':'')+'</td>'+
+      '<td><span class="tag tag-'+p.orgao.toLowerCase()+'">'+p.orgao+'</span></td>'+
       '<td>'+(p.tipo||'—')+'</td>'+
       '<td><span class="tag tag-'+p.status+'">'+statusLabel(p.status)+'</span></td>'+
       '<td style="white-space:nowrap">'+
