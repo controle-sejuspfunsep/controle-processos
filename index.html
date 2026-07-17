@@ -743,7 +743,7 @@ tr:hover td{background:#f8fafc}
           </div>
           <div class="metrics" id="pag-metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px"></div>
           <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-            <input type="text" id="pag-busca" placeholder="Buscar beneficiário, descrição..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:240px" oninput="renderTabelaPagamentos()">
+            <input type="text" id="pag-busca" placeholder="Buscar credor, descrição..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:240px" oninput="renderTabelaPagamentos()">
             <select id="pag-filtro-status" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaPagamentos()">
               <option value="">Todos os status</option>
               <option value="solicitado">Solicitado</option>
@@ -760,7 +760,7 @@ tr:hover td{background:#f8fafc}
             <div class="table-wrap">
               <table>
                 <thead><tr>
-                  <th>PRODOC</th><th>Objeto</th><th>Beneficiário</th><th>Tipo</th><th>Processo (SIGA)</th><th>Órgão</th>
+                  <th>PRODOC</th><th>Objeto</th><th>Credor</th><th>Tipo</th><th>Processo (SIGA)</th><th>Órgão</th>
                   <th style="text-align:right">Valor</th><th>Data</th><th>Status</th><th></th>
                 </tr></thead>
                 <tbody id="tb-pagamentos"></tbody>
@@ -1372,8 +1372,15 @@ tr:hover td{background:#f8fafc}
             <input type="hidden" id="pagamento-edit-id">
             <input type="hidden" id="pag-processo-id">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div class="form-group full"><label>Beneficiário</label>
-                <input type="text" class="form-input" id="pag-beneficiario" placeholder="Nome ou razão social"></div>
+              <div class="form-group full"><label>Processo vinculado (Nº SIGA)</label>
+                <select class="form-input" id="pag-processo-select" onchange="preencherDadosDoProcesso()">
+                  <option value="">Selecione o processo já cadastrado...</option>
+                  <option value="nao_aplicavel">Não aplicável (não há processo SIGA a vincular)</option>
+                </select>
+                <div id="pag-processo-confirmacao" style="font-size:11px;margin-top:4px;color:#888">Selecione um processo para vincular a este pagamento.</div>
+              </div>
+              <div class="form-group full"><label>Credor</label>
+                <input type="text" class="form-input" id="pag-beneficiario" placeholder="Nome ou razão social do credor"></div>
               <div class="form-group"><label>CPF/CNPJ</label>
                 <input type="text" class="form-input" id="pag-cpf-cnpj" placeholder="000.000.000-00"></div>
               <div class="form-group"><label>Unidade Gestora (UG)</label>
@@ -1381,12 +1388,6 @@ tr:hover td{background:#f8fafc}
                   <option value="SEJUSP">SEJUSP</option>
                   <option value="FUNSEP">FUNSEP</option>
                 </select>
-              </div>
-              <div class="form-group full"><label>Processo vinculado (Nº SIGA)</label>
-                <select class="form-input" id="pag-processo-select" onchange="preencherDadosDoProcesso()">
-                  <option value="">Selecione o processo já cadastrado...</option>
-                </select>
-                <div id="pag-processo-confirmacao" style="font-size:11px;margin-top:4px;color:#888">Selecione um processo para vincular a este pagamento.</div>
               </div>
               <div class="form-group"><label>Número PRODOC</label>
                 <input type="text" class="form-input" id="pag-prodoc" placeholder="Nº do processo PRODOC"></div>
@@ -5237,7 +5238,8 @@ async function popularSelectProcessoPagamento(valorSelecionadoId) {
   var sel = document.getElementById('pag-processo-select');
   if (!sel) return;
   await carregarProcessos();
-  sel.innerHTML = '<option value="">Selecione o processo já cadastrado...</option>';
+  sel.innerHTML = '<option value="">Selecione o processo já cadastrado...</option>'+
+                   '<option value="nao_aplicavel">Não aplicável (não há processo SIGA a vincular)</option>';
   processos.slice().sort(function(a,b){ return (a.siga||'').localeCompare(b.siga||''); }).forEach(function(p){
     var rotulo = (p.siga||'sem SIGA') + ' — ' + (p.objeto||'').substring(0,60) + ' ('+(p.orgao||'')+')';
     sel.innerHTML += '<option value="'+p.id+'">'+rotulo+'</option>';
@@ -5254,6 +5256,10 @@ function preencherDadosDoProcesso() {
     if (conf) { conf.textContent = 'Selecione um processo para vincular a este pagamento.'; conf.style.color = '#888'; }
     return;
   }
+  if (id === 'nao_aplicavel') {
+    if (conf) { conf.innerHTML = '<i class="ti ti-info-circle"></i> Este pagamento não será vinculado a nenhum processo SIGA.'; conf.style.color = '#888'; conf.style.fontWeight = '400'; }
+    return;
+  }
   var p = processos.find(function(x){ return x.id==id; });
   if (!p) {
     if (conf) { conf.textContent = 'Não foi possível encontrar esse processo (tente selecionar de novo).'; conf.style.color = '#c0392b'; }
@@ -5262,6 +5268,21 @@ function preencherDadosDoProcesso() {
   document.getElementById('pag-orgao').value    = p.orgao || 'SEJUSP';
   document.getElementById('pag-descricao').value = p.objeto || '';
   if (conf) { conf.innerHTML = '<i class="ti ti-link"></i> Vinculado a: ' + (p.siga||'sem SIGA'); conf.style.color = '#0a6640'; conf.style.fontWeight = '700'; }
+}
+
+// Versao "somente leitura": usada ao reabrir um pagamento ja existente
+// para edicao. So atualiza a mensagem de confirmacao do vinculo, sem
+// sobrescrever a Unidade Gestora/Descricao ja salvas no registro.
+function atualizarConfirmacaoProcessoPagamento() {
+  var sel = document.getElementById('pag-processo-select');
+  var id = sel ? sel.value : '';
+  var conf = document.getElementById('pag-processo-confirmacao');
+  if (!conf) return;
+  if (!id) { conf.textContent = 'Selecione um processo para vincular a este pagamento.'; conf.style.color = '#888'; conf.style.fontWeight = '400'; return; }
+  if (id === 'nao_aplicavel') { conf.innerHTML = '<i class="ti ti-info-circle"></i> Este pagamento não será vinculado a nenhum processo SIGA.'; conf.style.color = '#888'; conf.style.fontWeight = '400'; return; }
+  var p = processos.find(function(x){ return x.id==id; });
+  if (!p) { conf.textContent = 'Não foi possível encontrar esse processo (tente selecionar de novo).'; conf.style.color = '#c0392b'; return; }
+  conf.innerHTML = '<i class="ti ti-link"></i> Vinculado a: ' + (p.siga||'sem SIGA'); conf.style.color = '#0a6640'; conf.style.fontWeight = '700';
 }
 
 async function abrirModalPagamento(id) {
@@ -5274,8 +5295,10 @@ async function abrirModalPagamento(id) {
       document.getElementById('pag-beneficiario').value    = p.beneficiario||'';
       document.getElementById('pag-cpf-cnpj').value         = p.cpf_cnpj||'';
       document.getElementById('pag-orgao').value            = p.orgao||'SEJUSP';
-      document.getElementById('pag-processo-select').value  = p.processo_id||'';
-      document.getElementById('pag-processo-id').value      = p.processo_id||'';
+      var selVal = p.processo_id || (p.processo_vinculado==='Não aplicável' ? 'nao_aplicavel' : '');
+      document.getElementById('pag-processo-select').value  = selVal;
+      document.getElementById('pag-processo-id').value      = selVal;
+      atualizarConfirmacaoProcessoPagamento();
       document.getElementById('pag-prodoc').value           = p.prodoc||'';
       document.getElementById('pag-tipo').value             = p.tipo||'fornecedor';
       document.getElementById('pag-descricao').value        = p.descricao||'';
@@ -5301,9 +5324,11 @@ function editarPagamento(id) { abrirModalPagamento(id); }
 async function salvarPagamento() {
   var beneficiario = document.getElementById('pag-beneficiario').value.trim();
   var orgao = document.getElementById('pag-orgao').value;
-  if (!beneficiario||!orgao) { showToast('Informe o beneficiário e a Unidade Gestora.','error'); return; }
+  if (!beneficiario||!orgao) { showToast('Informe o credor e a Unidade Gestora.','error'); return; }
 
-  var processoId  = document.getElementById('pag-processo-select').value || null;
+  var processoSelValor = document.getElementById('pag-processo-select').value || '';
+  var naoAplicavel = processoSelValor === 'nao_aplicavel';
+  var processoId  = (processoSelValor && !naoAplicavel) ? processoSelValor : null;
   var processoSel = processoId ? processos.find(function(x){ return x.id==processoId; }) : null;
 
   var payload = {
@@ -5311,7 +5336,7 @@ async function salvarPagamento() {
     orgao: orgao,
     cpf_cnpj:           document.getElementById('pag-cpf-cnpj').value.trim(),
     processo_id:        processoId,
-    processo_vinculado: processoSel ? (processoSel.siga||'') : '',
+    processo_vinculado: processoSel ? (processoSel.siga||'') : (naoAplicavel ? 'Não aplicável' : ''),
     prodoc:             document.getElementById('pag-prodoc').value.trim(),
     tipo:               document.getElementById('pag-tipo').value,
     descricao:          document.getElementById('pag-descricao').value.trim(),
