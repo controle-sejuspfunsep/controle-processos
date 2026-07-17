@@ -1404,30 +1404,17 @@ tr:hover td{background:#f8fafc}
                 </select>
                 <div id="pag-processo-confirmacao" style="font-size:11px;margin-top:4px;color:#888">Selecione um processo para vincular a este pagamento.</div>
               </div>
-              <div class="form-group full"><label>Credor</label>
-                <input type="text" class="form-input" id="pag-beneficiario" placeholder="Nome ou razão social do credor"></div>
-              <div class="form-group"><label>CPF/CNPJ</label>
-                <input type="text" class="form-input" id="pag-cpf-cnpj" placeholder="000.000.000-00"></div>
               <div class="form-group"><label>Unidade Gestora (UG)</label>
                 <select class="form-input" id="pag-orgao">
                   <option value="SEJUSP">SEJUSP</option>
                   <option value="FUNSEP">FUNSEP</option>
                 </select>
               </div>
-              <div class="form-group full" style="margin-top:2px">
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400">
-                  <input type="checkbox" id="pag-multi-credor" onchange="togglePagMultiCredor()" style="width:auto">
-                  Este processo de pagamento possui mais de um credor
-                </label>
-              </div>
-              <div class="form-group full" id="pag-multi-credor-wrap" style="display:none">
-                <div id="lista-credores-pagamento"></div>
-                <button type="button" class="btn-secondary" onclick="adicionarLinhaCredorPag()"><i class="ti ti-plus"></i> Adicionar credor</button>
-                <div style="font-size:11px;color:#888;margin-top:8px"><i class="ti ti-info-circle"></i> Informe cada credor e o valor correspondente (mesmo que este pagamento não esteja vinculado a nenhum processo SIGA).</div>
-              </div>
               <div class="form-group"><label>Número PRODOC</label>
                 <input type="text" class="form-input" id="pag-prodoc" placeholder="Nº do processo PRODOC"></div>
-              <div class="form-group"><label>Tipo</label>
+              <div class="form-group"><label>Data de criação</label>
+                <input type="date" class="form-input" id="pag-data"></div>
+              <div class="form-group"><label>Tipo de credor</label>
                 <select class="form-input" id="pag-tipo">
                   <option value="fornecedor">Fornecedor</option>
                   <option value="prestador">Prestador de Serviço</option>
@@ -1437,10 +1424,31 @@ tr:hover td{background:#f8fafc}
               </div>
               <div class="form-group full"><label>Descrição</label>
                 <input type="text" class="form-input" id="pag-descricao" placeholder="Ex: Aquisição de material de expediente"></div>
-              <div class="form-group"><label>Valor (R$)</label>
-                <input type="number" step="0.01" class="form-input" id="pag-valor" placeholder="Ex: 1500,00"></div>
-              <div class="form-group"><label>Data</label>
-                <input type="date" class="form-input" id="pag-data"></div>
+
+              <div class="form-group full" style="margin-top:2px">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400">
+                  <input type="checkbox" id="pag-multi-credor" onchange="togglePagMultiCredor()" style="width:auto">
+                  Este processo de pagamento possui mais de um credor?
+                </label>
+              </div>
+
+              <div class="form-group full" id="pag-credor-unico-wrap">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  <div class="form-group full"><label>Credor</label>
+                    <input type="text" class="form-input" id="pag-beneficiario" placeholder="Nome ou razão social do credor"></div>
+                  <div class="form-group"><label>CPF/CNPJ</label>
+                    <input type="text" class="form-input" id="pag-cpf-cnpj" placeholder="000.000.000-00"></div>
+                  <div class="form-group"><label>Valor (R$)</label>
+                    <input type="number" step="0.01" class="form-input" id="pag-valor" placeholder="Ex: 1500,00"></div>
+                </div>
+              </div>
+
+              <div class="form-group full" id="pag-multi-credor-wrap" style="display:none">
+                <div id="lista-credores-pagamento"></div>
+                <button type="button" class="btn-secondary" onclick="adicionarLinhaCredorPag()"><i class="ti ti-plus"></i> Adicionar credor</button>
+                <div style="font-size:11px;color:#888;margin-top:8px"><i class="ti ti-info-circle"></i> Informe cada credor e o valor correspondente (mesmo que este pagamento não esteja vinculado a nenhum processo SIGA).</div>
+              </div>
+
               <div class="form-group"><label>Status</label>
                 <select class="form-input" id="pag-status">
                   <option value="solicitado">Solicitado</option>
@@ -5521,6 +5529,7 @@ function atualizarConfirmacaoProcessoPagamento() {
 function togglePagMultiCredor() {
   var chk = document.getElementById('pag-multi-credor').checked;
   document.getElementById('pag-multi-credor-wrap').style.display = chk ? '' : 'none';
+  document.getElementById('pag-credor-unico-wrap').style.display = chk ? 'none' : '';
   if (chk && !credoresPagTemp.length) adicionarLinhaCredorPag();
   if (!chk) { credoresPagTemp = []; renderCredoresPagTemp(); }
 }
@@ -5618,6 +5627,8 @@ async function abrirModalPagamento(id) {
   if (chkPagCredor) chkPagCredor.checked = credoresPagTemp.length > 0;
   var wrapPagCredor = document.getElementById('pag-multi-credor-wrap');
   if (wrapPagCredor) wrapPagCredor.style.display = credoresPagTemp.length > 0 ? '' : 'none';
+  var wrapPagUnico = document.getElementById('pag-credor-unico-wrap');
+  if (wrapPagUnico) wrapPagUnico.style.display = credoresPagTemp.length > 0 ? 'none' : '';
   renderCredoresPagTemp();
   abrirModal('m-pagamento');
 }
@@ -5625,9 +5636,24 @@ async function abrirModalPagamento(id) {
 function editarPagamento(id) { abrirModalPagamento(id); }
 
 async function salvarPagamento() {
-  var beneficiario = document.getElementById('pag-beneficiario').value.trim();
   var orgao = document.getElementById('pag-orgao').value;
-  if (!beneficiario||!orgao) { showToast('Informe o credor e a Unidade Gestora.','error'); return; }
+  if (!orgao) { showToast('Informe a Unidade Gestora.','error'); return; }
+
+  var multiCredor = document.getElementById('pag-multi-credor').checked;
+  var beneficiario, cpfCnpj, valorTotal;
+
+  if (multiCredor) {
+    var credoresValidos = credoresPagTemp.filter(function(c){ return (c.credor||'').trim(); });
+    if (!credoresValidos.length) { showToast('Adicione ao menos um credor.','error'); return; }
+    beneficiario = credoresValidos.length===1 ? credoresValidos[0].credor.trim() : 'Vários credores ('+credoresValidos.length+')';
+    cpfCnpj = credoresValidos.length===1 ? (credoresValidos[0].cpf_cnpj||'').trim() : '';
+    valorTotal = credoresValidos.reduce(function(s,c){ return s + (parseFloat(c.valor)||0); }, 0);
+  } else {
+    beneficiario = document.getElementById('pag-beneficiario').value.trim();
+    if (!beneficiario) { showToast('Informe o credor.','error'); return; }
+    cpfCnpj = document.getElementById('pag-cpf-cnpj').value.trim();
+    valorTotal = parseFloat(document.getElementById('pag-valor').value)||0;
+  }
 
   var processoSelValor = document.getElementById('pag-processo-select').value || '';
   var naoAplicavel = processoSelValor === 'nao_aplicavel';
@@ -5637,13 +5663,13 @@ async function salvarPagamento() {
   var payload = {
     beneficiario: beneficiario,
     orgao: orgao,
-    cpf_cnpj:           document.getElementById('pag-cpf-cnpj').value.trim(),
+    cpf_cnpj:           cpfCnpj,
     processo_id:        processoId,
     processo_vinculado: processoSel ? (processoSel.siga||'') : (naoAplicavel ? 'Não aplicável' : ''),
     prodoc:             document.getElementById('pag-prodoc').value.trim(),
     tipo:               document.getElementById('pag-tipo').value,
     descricao:          document.getElementById('pag-descricao').value.trim(),
-    valor:              parseFloat(document.getElementById('pag-valor').value)||0,
+    valor:              valorTotal,
     data_pagamento:     document.getElementById('pag-data').value||null,
     status:             document.getElementById('pag-status').value,
     obs:                document.getElementById('pag-obs').value.trim(),
