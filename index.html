@@ -288,6 +288,18 @@ tr:hover td{background:#f8fafc}
           </div>
         </div>
 
+        <!-- Quadro de Avisos -->
+        <div class="card" id="quadro-avisos-card" style="padding:18px;margin-bottom:18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+            <div class="sec-label" style="margin:0;border:none;padding:0"><i class="ti ti-speakerphone"></i> Quadro de Avisos — Coordenadoria Administrativa e Financeira</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn-secondary" onclick="abrirArquivadosAvisos()" style="font-size:12px"><i class="ti ti-archive"></i> Arquivados</button>
+              <button class="btn-primary" onclick="abrirModalAviso()" style="font-size:12px"><i class="ti ti-plus"></i> Novo aviso</button>
+            </div>
+          </div>
+          <div id="lista-avisos"></div>
+        </div>
+
         <!-- Cards resumo -->
         <div class="metrics" id="metrics-box"></div>
 
@@ -1383,6 +1395,40 @@ tr:hover td{background:#f8fafc}
         </div>
       </div>
 
+      <!-- MODAL NOVO AVISO -->
+      <div class="modal-overlay" id="m-aviso">
+        <div class="modal-box" style="width:520px">
+          <div class="modal-header">
+            <div><div class="modal-title">Novo aviso</div>
+            <div class="modal-sub">Quadro de Avisos — Coordenadoria Administrativa e Financeira</div></div>
+            <button class="modal-close" onclick="fecharModal('m-aviso')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group full"><label>Mensagem</label>
+              <textarea class="form-input" id="aviso-mensagem" placeholder="Escreva o aviso..." style="min-height:110px"></textarea></div>
+            <div style="font-size:11px;color:#888"><i class="ti ti-info-circle"></i> O aviso será assinado com o seu nome e ficará visível no quadro por 7 dias. Depois disso, é arquivado automaticamente (mas não é apagado).</div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-aviso')">Cancelar</button>
+            <button class="btn-primary" onclick="salvarAviso()"><i class="ti ti-device-floppy"></i> Publicar aviso</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL AVISOS ARQUIVADOS -->
+      <div class="modal-overlay" id="m-avisos-arquivados">
+        <div class="modal-box" style="width:560px;max-height:82vh">
+          <div class="modal-header">
+            <div><div class="modal-title">Avisos arquivados</div>
+            <div class="modal-sub">Mensagens publicadas há mais de 7 dias</div></div>
+            <button class="modal-close" onclick="fecharModal('m-avisos-arquivados')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <div id="lista-avisos-arquivados"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- MODAL PROCESSO DE PAGAMENTO -->
       <div class="modal-overlay" id="m-pagamento">
         <div class="modal-box" style="width:640px">
@@ -1842,7 +1888,9 @@ async function iniciarApp() {
   document.getElementById('dash-date').textContent = d.toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
   await carregarProcessos();
+  await carregarAvisos();
   renderDashboard();
+  renderAvisos();
   renderTable();
   ativarRealtime();
 }
@@ -1858,6 +1906,115 @@ function statusLabel(s) {
 }
 
 var chartStatus = null, chartOrgao = null, chartAno = null, chartTipo = null;
+
+// ── QUADRO DE AVISOS ──
+var AVISOS = [];
+
+function escapeHtml(s) {
+  return (s||'').replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+
+function fmtDataHoraBR(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+}
+
+async function carregarAvisos() {
+  try {
+    var r = await sb.from('cp_avisos').select('*').order('criado_em', {ascending:false});
+    if (!r.error) AVISOS = r.data||[];
+  } catch(e) { AVISOS = []; }
+}
+
+function avisoEstaAtivo(a) {
+  var criado = new Date(a.criado_em);
+  if (isNaN(criado.getTime())) return true;
+  var limite = new Date(criado.getTime() + 7*24*60*60*1000);
+  return new Date() <= limite;
+}
+
+function renderAvisos() {
+  var wrap = document.getElementById('lista-avisos');
+  if (!wrap) return;
+  var ativos = AVISOS.filter(avisoEstaAtivo);
+  if (!ativos.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:18px;color:#aaa;font-size:12px">Nenhum aviso no momento.</div>';
+    return;
+  }
+  wrap.innerHTML = ativos.map(function(a){
+    var podeExcluir = PERFIL && USER && (PERFIL.perfil==='Gestor' || a.autor_user_id===USER.id);
+    return '<div style="background:#fffbea;border:1px solid #f5e5a3;border-left:4px solid #d4a017;border-radius:8px;padding:12px 14px;margin-bottom:10px">'+
+      '<div style="font-size:13px;white-space:pre-wrap;margin-bottom:8px">'+escapeHtml(a.mensagem)+'</div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#888">'+
+        '<span><i class="ti ti-user"></i> '+escapeHtml(a.autor_nome||'—')+' — '+fmtDataHoraBR(a.criado_em)+'</span>'+
+        (podeExcluir ? '<button class="btn-icon" onclick="excluirAviso(\''+a.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>' : '')+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function renderAvisosArquivados() {
+  var wrap = document.getElementById('lista-avisos-arquivados');
+  if (!wrap) return;
+  var arquivados = AVISOS.filter(function(a){ return !avisoEstaAtivo(a); });
+  if (!arquivados.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:18px;color:#aaa;font-size:12px">Nenhum aviso arquivado.</div>';
+    return;
+  }
+  wrap.innerHTML = arquivados.map(function(a){
+    var podeExcluir = PERFIL && USER && (PERFIL.perfil==='Gestor' || a.autor_user_id===USER.id);
+    return '<div style="background:#f8fafc;border:1px solid #e0e0e0;border-radius:8px;padding:12px 14px;margin-bottom:10px;opacity:0.85">'+
+      '<div style="font-size:13px;white-space:pre-wrap;margin-bottom:8px">'+escapeHtml(a.mensagem)+'</div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#888">'+
+        '<span><i class="ti ti-user"></i> '+escapeHtml(a.autor_nome||'—')+' — '+fmtDataHoraBR(a.criado_em)+' · arquivado</span>'+
+        (podeExcluir ? '<button class="btn-icon" onclick="excluirAviso(\''+a.id+'\', true)" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>' : '')+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function abrirModalAviso() {
+  document.getElementById('aviso-mensagem').value = '';
+  abrirModal('m-aviso');
+}
+
+function abrirArquivadosAvisos() {
+  renderAvisosArquivados();
+  abrirModal('m-avisos-arquivados');
+}
+
+async function salvarAviso() {
+  var mensagem = document.getElementById('aviso-mensagem').value.trim();
+  if (!mensagem) { showToast('Escreva a mensagem do aviso.','error'); return; }
+  try {
+    var r = await sb.from('cp_avisos').insert({
+      mensagem: mensagem,
+      autor_nome: PERFIL ? (PERFIL.nome || USER.email) : (USER ? USER.email : 'Usuário'),
+      autor_user_id: USER ? USER.id : null
+    });
+    if (r.error) throw r.error;
+    fecharModal('m-aviso');
+    await carregarAvisos();
+    renderAvisos();
+    showToast('Aviso publicado no quadro!');
+  } catch(e) { showToast('Erro ao publicar aviso: '+(e.message||''), 'error'); console.error(e); }
+}
+
+async function excluirAviso(id, veioDosArquivados) {
+  if (!confirm('Excluir este aviso do quadro?')) return;
+  try {
+    var r = await sb.from('cp_avisos').delete().eq('id', id);
+    if (r.error) throw r.error;
+    await carregarAvisos();
+    renderAvisos();
+    if (veioDosArquivados) renderAvisosArquivados();
+    showToast('Aviso excluído.');
+  } catch(e) { showToast('Erro ao excluir aviso: '+(e.message||''), 'error'); console.error(e); }
+}
 
 function renderDashboard() {
   // Filtro por ano
@@ -2084,7 +2241,7 @@ function showPage(id, el) {
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   document.getElementById('page-'+id).classList.add('active');
   if (el) el.classList.add('active');
-  if (id==='dashboard') renderDashboard();
+  if (id==='dashboard') { renderDashboard(); renderAvisos(); }
   if (id==='processos') renderTable();
   if (id==='usuarios')  carregarUsuarios();
   if (id==='fluxograma') renderFluxograma();
