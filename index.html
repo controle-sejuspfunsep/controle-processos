@@ -222,6 +222,17 @@ tr:hover td{background:#f8fafc}
         <label>E-mail</label>
         <input type="email" id="reg-email" placeholder="seu@email.com"/>
       </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Núcleo/Setor</label>
+        <select id="reg-setor" class="form-input">
+          <option value="">Selecione...</option>
+          <option>Núcleo de Processos</option>
+          <option>Núcleo Administrativo</option>
+          <option>Núcleo Financeiro</option>
+          <option>Núcleo de Contratos e Convênios</option>
+          <option>Outro</option>
+        </select>
+      </div>
       <div class="form-group" style="margin-bottom:22px">
         <label>Senha</label>
         <div style="position:relative">
@@ -876,7 +887,7 @@ tr:hover td{background:#f8fafc}
         </div>
         <div class="card" style="padding:0">
           <table>
-            <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th><th>Cadastrado em</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Núcleo/Setor</th><th>Perfil</th><th>Status</th><th>Cadastrado em</th><th>Ações</th></tr></thead>
             <tbody id="user-tbody"></tbody>
           </table>
         </div>
@@ -1678,10 +1689,11 @@ async function doRegister() {
   var nome  = document.getElementById('reg-nome').value.trim();
   var email = document.getElementById('reg-email').value.trim();
   var senha  = document.getElementById('reg-pass').value;
-  if (!nome||!email||!senha) { mostrarErro('Preencha todos os campos.'); return; }
+  var setor = document.getElementById('reg-setor').value;
+  if (!nome||!email||!senha||!setor) { mostrarErro('Preencha todos os campos, incluindo o núcleo/setor.'); return; }
   if (senha.length < 6) { mostrarErro('Senha deve ter no mínimo 6 caracteres.'); return; }
   try {
-    var r = await sb.auth.signUp({ email: email, password: senha, options: { data: { nome: nome } } });
+    var r = await sb.auth.signUp({ email: email, password: senha, options: { data: { nome: nome, setor: setor } } });
     if (r.error) { mostrarErro(r.error.message); return; }
     mostrarErro('✅ Cadastro enviado! Seu acesso depende da aprovação do gestor do sistema. Você poderá entrar assim que for aprovado.');
     setLoginTab('login');
@@ -1713,8 +1725,9 @@ async function iniciarApp() {
   } else {
     // Primeiro acesso — criar perfil automático, como Consulta e pendente
     // de aprovacao do gestor (nao ganha acesso automatico de escrita).
-    var nome = (USER.user_metadata && USER.user_metadata.nome) || USER.email.split('@')[0];
-    var novoPerfil = { user_id: USER.id, email: USER.email, nome: nome, perfil: 'Consulta', ativo: true, status: 'pendente' };
+    var nome  = (USER.user_metadata && USER.user_metadata.nome)  || USER.email.split('@')[0];
+    var setor = (USER.user_metadata && USER.user_metadata.setor) || '';
+    var novoPerfil = { user_id: USER.id, email: USER.email, nome: nome, setor: setor, perfil: 'Consulta', ativo: true, status: 'pendente' };
     await sb.from('cp_usuarios').insert(novoPerfil);
     PERFIL = novoPerfil;
   }
@@ -2189,6 +2202,7 @@ async function carregarUsuarios() {
     return '<tr>'+
       '<td>'+u.nome+'</td>'+
       '<td>'+u.email+'</td>'+
+      '<td style="font-size:12px;color:#555">'+(u.setor||'—')+'</td>'+
       '<td><select class="form-input" style="font-size:12px;padding:4px 8px;width:auto" onchange="atualizarPerfilUsuario(\''+u.id+'\', this.value)">'+
         ['Gestor','Analista','Consulta'].map(function(p){ return '<option value="'+p+'"'+(u.perfil===p?' selected':'')+'>'+p+'</option>'; }).join('')+
       '</select></td>'+
@@ -2196,7 +2210,7 @@ async function carregarUsuarios() {
       '<td style="color:#888;font-size:12px">'+dt+'</td>'+
       '<td style="white-space:nowrap">'+acoes+'</td>'+
     '</tr>';
-  }).join('') || '<tr><td colspan="6" class="empty">Nenhum usuário.</td></tr>';
+  }).join('') || '<tr><td colspan="7" class="empty">Nenhum usuário.</td></tr>';
   atualizarBadgeUsuariosPendentes(r.data||[]);
 }
 
