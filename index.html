@@ -2227,10 +2227,29 @@ function resetForm() {
   renderCredoresTemp();
 }
 
+function normalizarSigaComparacao(valor) {
+  return (valor||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+var SIGA_PLACEHOLDERS_NAO_APLICAVEL = ['', 'NAO HA', 'N/A', 'NA', 'SEM SIGA', 'NENHUM', '-', '--', 'X'];
+
 async function salvarProcesso() {
   if (!selectedOrgao) { showToast('Selecione o órgão (SEJUSP ou FUNSEP).','error'); return; }
   if (!document.getElementById('f-objeto').value.trim()) { showToast('Informe a descrição do objeto.','error'); return; }
   if (!selectedStatus) { showToast('Selecione o status do processo.','error'); return; }
+
+  var sigaInformado = document.getElementById('f-siga').value.trim();
+  var sigaNormalizado = normalizarSigaComparacao(sigaInformado);
+  if (sigaInformado && SIGA_PLACEHOLDERS_NAO_APLICAVEL.indexOf(sigaNormalizado) === -1) {
+    await carregarProcessos();
+    var duplicado = processos.find(function(x){
+      return normalizarSigaComparacao(x.siga) === sigaNormalizado && x.id != editId;
+    });
+    if (duplicado) {
+      showToast('Já existe um processo cadastrado com o número SIGA "'+sigaInformado+'". Verifique antes de salvar.','error');
+      return;
+    }
+  }
 
   var payload = {
     orgao:       selectedOrgao,
