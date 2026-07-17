@@ -32,6 +32,10 @@ body{font-family:Arial,sans-serif;background:#f4f4f4;color:#222}
 .section-title{font-size:20px;font-weight:700;color:#1a3a5c}
 .btn-primary{background:#1a3a5c;color:#fff;border:none;padding:9px 18px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .btn-primary:hover{background:#22507a}
+/* Perfil "Consulta": somente visualizacao - esconde botoes de criar/editar/excluir/salvar */
+body.modo-consulta #app-screen .btn-primary{display:none !important}
+body.modo-consulta #app-screen .btn-icon[title="Editar"]{display:none !important}
+body.modo-consulta #app-screen .btn-icon[title^="Excluir"]{display:none !important}
 .btn-secondary{background:#fff;color:#333;border:1px solid #ccc;padding:9px 18px;border-radius:7px;font-size:13px;cursor:pointer}
 .btn-secondary:hover{background:#f5f5f5}
 .card{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:22px;margin-bottom:18px}
@@ -259,7 +263,7 @@ tr:hover td{background:#f8fafc}
       <div class="nav-item" id="nav-financeiro" onclick="showPage('financeiro',this)"><i class="ti ti-building-bank"></i> Núcleo Financeiro</div>
       <div class="nav-item" id="nav-contratos" onclick="showPage('contratos',this)"><i class="ti ti-file-contract"></i> 📋 Núcleo de Contratos e Convênios <span id="badge-contratos" style="display:none;background:#c0392b;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px">!</span></div>
       <div class="nav-item" id="nav-documentos" onclick="showPage('documentos',this)"><i class="ti ti-folder"></i> 📁 Documentos</div>
-      <div class="nav-item" id="nav-usuarios" style="display:none" onclick="showPage('usuarios',this)"><i class="ti ti-users"></i> Usuários</div>
+      <div class="nav-item" id="nav-usuarios" style="display:none" onclick="showPage('usuarios',this)"><i class="ti ti-users"></i> Usuários <span id="badge-usuarios-pendentes" style="display:none;background:#c0392b;color:#fff;border-radius:20px;font-size:10px;font-weight:700;padding:1px 7px;margin-left:6px"></span></div>
     </div>
     <div class="content">
 
@@ -872,7 +876,7 @@ tr:hover td{background:#f8fafc}
         </div>
         <div class="card" style="padding:0">
           <table>
-            <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Cadastrado em</th></tr></thead>
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th><th>Cadastrado em</th><th>Ações</th></tr></thead>
             <tbody id="user-tbody"></tbody>
           </table>
         </div>
@@ -1679,7 +1683,7 @@ async function doRegister() {
   try {
     var r = await sb.auth.signUp({ email: email, password: senha, options: { data: { nome: nome } } });
     if (r.error) { mostrarErro(r.error.message); return; }
-    mostrarErro('✅ Conta criada! Faça login para continuar.');
+    mostrarErro('✅ Cadastro enviado! Seu acesso depende da aprovação do gestor do sistema. Você poderá entrar assim que for aprovado.');
     setLoginTab('login');
   } catch(e) { mostrarErro('Erro ao criar conta.'); }
 }
@@ -1687,6 +1691,7 @@ async function doRegister() {
 async function doLogout() {
   await sb.auth.signOut();
   USER = null; PERFIL = null; processos = [];
+  document.body.classList.remove('modo-consulta');
   document.getElementById('app-screen').style.display  = 'none';
   document.getElementById('login-screen').style.display = 'flex';
 }
@@ -1706,11 +1711,32 @@ async function iniciarApp() {
   if (rp.data) {
     PERFIL = rp.data;
   } else {
-    // Primeiro acesso — criar perfil automático
+    // Primeiro acesso — criar perfil automático, como Consulta e pendente
+    // de aprovacao do gestor (nao ganha acesso automatico de escrita).
     var nome = (USER.user_metadata && USER.user_metadata.nome) || USER.email.split('@')[0];
-    var novoPerfil = { user_id: USER.id, email: USER.email, nome: nome, perfil: 'Analista', ativo: true };
+    var novoPerfil = { user_id: USER.id, email: USER.email, nome: nome, perfil: 'Consulta', ativo: true, status: 'pendente' };
     await sb.from('cp_usuarios').insert(novoPerfil);
     PERFIL = novoPerfil;
+  }
+
+  // Bloquear quem ainda nao foi aprovado ou teve o acesso recusado pelo gestor.
+  // Usuarios antigos sem "status" definido sao tratados como ja aprovados.
+  var statusAcesso = PERFIL.status || 'aprovado';
+  if (statusAcesso === 'pendente') {
+    await sb.auth.signOut();
+    USER = null; PERFIL = null;
+    document.getElementById('app-screen').style.display    = 'none';
+    document.getElementById('login-screen').style.display  = 'flex';
+    mostrarErro('Seu cadastro foi enviado e está aguardando aprovação do gestor. Tente novamente mais tarde.');
+    return;
+  }
+  if (statusAcesso === 'rejeitado') {
+    await sb.auth.signOut();
+    USER = null; PERFIL = null;
+    document.getElementById('app-screen').style.display    = 'none';
+    document.getElementById('login-screen').style.display  = 'flex';
+    mostrarErro('Seu acesso a este sistema não foi autorizado. Entre em contato com o gestor.');
+    return;
   }
 
   document.getElementById('login-screen').style.display  = 'none';
@@ -1720,6 +1746,12 @@ async function iniciarApp() {
   // Mostrar menu Usuários só para Gestores
   var navUsuarios = document.getElementById('nav-usuarios');
   if (navUsuarios) navUsuarios.style.display = PERFIL.perfil === 'Gestor' ? 'flex' : 'none';
+  if (PERFIL.perfil === 'Gestor') {
+    sb.from('cp_usuarios').select('*').then(function(r){ atualizarBadgeUsuariosPendentes(r.data||[]); });
+  }
+
+  // Perfil Consulta: modo somente-visualizacao (esconde acoes de escrita)
+  document.body.classList.toggle('modo-consulta', PERFIL.perfil === 'Consulta');
 
   var d = new Date();
   document.getElementById('dash-date').textContent = d.toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -2133,20 +2165,94 @@ async function excluirProcesso(id) {
 }
 
 // ── USUÁRIOS ──
+var USER_STATUS_L   = { pendente:'Pendente', aprovado:'Aprovado', rejeitado:'Recusado' };
+var USER_STATUS_COR = { pendente:{bg:'#fef3c7',cor:'#92400e'}, aprovado:{bg:'#dcfce7',cor:'#166534'}, rejeitado:{bg:'#fee2e2',cor:'#991b1b'} };
+
 async function carregarUsuarios() {
   var r = await sb.from('cp_usuarios').select('*').order('created_at');
   if (r.error) return;
   var tbody = document.getElementById('user-tbody');
   if (!tbody) return;
   tbody.innerHTML = (r.data||[]).map(function(u) {
-    var dt = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—';
+    var dt     = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—';
+    var status = u.status || 'aprovado';
+    var sit    = USER_STATUS_COR[status] || USER_STATUS_COR.aprovado;
+    var acoes;
+    if (status === 'pendente') {
+      acoes = '<button class="btn-icon" onclick="aprovarUsuario(\''+u.id+'\')" title="Aprovar" style="color:#0a6640"><i class="ti ti-check"></i></button>'+
+              '<button class="btn-icon" onclick="recusarUsuario(\''+u.id+'\')" title="Recusar" style="color:#c0392b"><i class="ti ti-x"></i></button>';
+    } else if (status === 'rejeitado') {
+      acoes = '<button class="btn-icon" onclick="reativarUsuario(\''+u.id+'\')" title="Liberar acesso" style="color:#0a6640"><i class="ti ti-lock-open"></i></button>';
+    } else {
+      acoes = '<button class="btn-icon" onclick="bloquearUsuario(\''+u.id+'\')" title="Bloquear acesso" style="color:#c0392b"><i class="ti ti-lock"></i></button>';
+    }
     return '<tr>'+
       '<td>'+u.nome+'</td>'+
       '<td>'+u.email+'</td>'+
-      '<td><span class="tag" style="background:#dbeafe;color:#1e40af">'+u.perfil+'</span></td>'+
+      '<td><select class="form-input" style="font-size:12px;padding:4px 8px;width:auto" onchange="atualizarPerfilUsuario(\''+u.id+'\', this.value)">'+
+        ['Gestor','Analista','Consulta'].map(function(p){ return '<option value="'+p+'"'+(u.perfil===p?' selected':'')+'>'+p+'</option>'; }).join('')+
+      '</select></td>'+
+      '<td><span class="tag" style="background:'+sit.bg+';color:'+sit.cor+'">'+(USER_STATUS_L[status]||status)+'</span></td>'+
       '<td style="color:#888;font-size:12px">'+dt+'</td>'+
+      '<td style="white-space:nowrap">'+acoes+'</td>'+
     '</tr>';
-  }).join('') || '<tr><td colspan="4" class="empty">Nenhum usuário.</td></tr>';
+  }).join('') || '<tr><td colspan="6" class="empty">Nenhum usuário.</td></tr>';
+  atualizarBadgeUsuariosPendentes(r.data||[]);
+}
+
+function atualizarBadgeUsuariosPendentes(lista) {
+  var badge = document.getElementById('badge-usuarios-pendentes');
+  if (!badge) return;
+  var pendentes = (lista||[]).filter(function(u){ return (u.status||'aprovado')==='pendente'; }).length;
+  if (pendentes>0) { badge.textContent = pendentes; badge.style.display = 'inline-block'; }
+  else { badge.style.display = 'none'; }
+}
+
+async function atualizarPerfilUsuario(id, perfil) {
+  try {
+    var r = await sb.from('cp_usuarios').update({perfil: perfil}).eq('id', id);
+    if (r.error) throw r.error;
+    showToast('Perfil atualizado!');
+  } catch(e) { showToast('Erro ao atualizar perfil: '+(e.message||''), 'error'); console.error(e); }
+  carregarUsuarios();
+}
+
+async function aprovarUsuario(id) {
+  try {
+    var r = await sb.from('cp_usuarios').update({status:'aprovado'}).eq('id', id);
+    if (r.error) throw r.error;
+    showToast('Usuário aprovado! Já pode acessar o sistema.');
+  } catch(e) { showToast('Erro ao aprovar: '+(e.message||''), 'error'); console.error(e); }
+  carregarUsuarios();
+}
+
+async function recusarUsuario(id) {
+  if (!confirm('Recusar o cadastro deste usuário? Ele não conseguirá acessar o sistema.')) return;
+  try {
+    var r = await sb.from('cp_usuarios').update({status:'rejeitado'}).eq('id', id);
+    if (r.error) throw r.error;
+    showToast('Cadastro recusado.');
+  } catch(e) { showToast('Erro ao recusar: '+(e.message||''), 'error'); console.error(e); }
+  carregarUsuarios();
+}
+
+async function bloquearUsuario(id) {
+  if (!confirm('Bloquear o acesso deste usuário ao sistema?')) return;
+  try {
+    var r = await sb.from('cp_usuarios').update({status:'rejeitado'}).eq('id', id);
+    if (r.error) throw r.error;
+    showToast('Acesso bloqueado.');
+  } catch(e) { showToast('Erro ao bloquear: '+(e.message||''), 'error'); console.error(e); }
+  carregarUsuarios();
+}
+
+async function reativarUsuario(id) {
+  try {
+    var r = await sb.from('cp_usuarios').update({status:'aprovado'}).eq('id', id);
+    if (r.error) throw r.error;
+    showToast('Acesso liberado!');
+  } catch(e) { showToast('Erro ao liberar acesso: '+(e.message||''), 'error'); console.error(e); }
+  carregarUsuarios();
 }
 
 // ── REALTIME ──
@@ -4146,7 +4252,7 @@ async function renderModelos() {
       '<div style="font-weight:700;font-size:13px;color:#222">'+(m.nome||'Sem nome')+'</div>'+
       '<div style="font-size:12px;color:#666;flex:1">'+(m.descricao||'')+'</div>'+
       '<div style="display:flex;gap:8px;margin-top:6px;align-items:center">'+
-        (m.arquivo_url ? '<a href="'+m.arquivo_url+'" target="_blank" class="btn-primary" style="text-decoration:none;font-size:12px;padding:7px 12px"><i class="ti ti-download"></i> Baixar</a>' : '<span style="font-size:11px;color:#aaa">Sem arquivo</span>')+
+        (m.arquivo_url ? '<a href="'+m.arquivo_url+'" target="_blank" class="btn-secondary" style="text-decoration:none;font-size:12px;padding:7px 12px"><i class="ti ti-download"></i> Baixar</a>' : '<span style="font-size:11px;color:#aaa">Sem arquivo</span>')+
         '<button class="btn-icon" onclick="editarModelo(\''+m.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
         '<button class="btn-icon" onclick="excluirModelo(\''+m.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
       '</div>'+
