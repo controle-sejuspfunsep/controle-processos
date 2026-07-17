@@ -3417,7 +3417,8 @@ async function abrirModalEmpenho(id) {
 
   // Popular select de processos
   var selProc = document.getElementById('emp-fin-processo');
-  selProc.innerHTML = '<option value="">Selecionar processo...</option>';
+  selProc.innerHTML = '<option value="">Selecionar processo...</option>'+
+                       '<option value="nao_aplicavel">Não aplicável (não há processo SIGA a vincular)</option>';
   processos.forEach(function(p){ selProc.innerHTML += '<option value="'+p.siga+'">'+(p.siga||'Sem SIGA')+' — '+p.objeto.substring(0,50)+'</option>'; });
 
   // Popular select de contas
@@ -3437,7 +3438,7 @@ async function abrirModalEmpenho(id) {
       document.getElementById('emp-fin-ug').value       = e.ug||'FUNSEP';
       document.getElementById('emp-fin-credor').value   = e.credor||'';
       document.getElementById('emp-fin-tipo').value     = e.tipo_empenho||'Ordinário';
-      document.getElementById('emp-fin-processo').value = e.processo_siga||'';
+      document.getElementById('emp-fin-processo').value = (e.processo_siga==='Não aplicável') ? 'nao_aplicavel' : (e.processo_siga||'');
       document.getElementById('emp-fin-conta').value    = e.conta_id||'';
       document.getElementById('emp-fin-valor').value    = e.valor||'';
       document.getElementById('emp-fin-situacao').value = e.situacao||'ativo';
@@ -3523,6 +3524,7 @@ function atualizarInfoProcessoEmpenho() {
   var info = document.getElementById('emp-processo-info');
   if (!info) return;
   if (!siga) { info.textContent = 'Selecione o processo para preencher Unidade Gestora e Credor automaticamente.'; info.style.color = '#888'; info.style.fontWeight = 'normal'; return; }
+  if (siga === 'nao_aplicavel') { info.innerHTML = '<i class="ti ti-info-circle"></i> Este empenho não será vinculado a nenhum processo SIGA.'; info.style.color = '#888'; info.style.fontWeight = '400'; return; }
   var proc = processos.find(function(p){return p.siga===siga;});
   if (!proc) { info.textContent = ''; return; }
   var d = dadosDerivadosProcesso(proc);
@@ -3533,7 +3535,7 @@ function atualizarInfoProcessoEmpenho() {
 
 function preencherCamposProcesso() {
   var siga = document.getElementById('emp-fin-processo').value;
-  if (!siga) { atualizarInfoProcessoEmpenho(); popularCredorEspecificoEmpenho(); return; }
+  if (!siga || siga === 'nao_aplicavel') { atualizarInfoProcessoEmpenho(); popularCredorEspecificoEmpenho(); return; }
   var proc = processos.find(function(p){return p.siga===siga;});
   if (!proc) { atualizarInfoProcessoEmpenho(); popularCredorEspecificoEmpenho(); return; }
 
@@ -3628,7 +3630,8 @@ async function salvarEmpenhoFin() {
     }
   }
 
-  var payload = { numero, data_empenho:data, ug, credor, tipo_empenho:tipo, conta_id:contaId||null, valor, situacao:sit, obs, processo_siga:siga||null };
+  var sigaParaSalvar = siga === 'nao_aplicavel' ? 'Não aplicável' : (siga||null);
+  var payload = { numero, data_empenho:data, ug, credor, tipo_empenho:tipo, conta_id:contaId||null, valor, situacao:sit, obs, processo_siga:sigaParaSalvar };
 
   try {
     if (editId) {
