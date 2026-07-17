@@ -1749,13 +1749,16 @@ async function iniciarApp() {
   if (rp.data) {
     PERFIL = rp.data;
   } else {
-    // Primeiro acesso — criar perfil automático, como Consulta e pendente
-    // de aprovacao do gestor (nao ganha acesso automatico de escrita).
-    var nome  = (USER.user_metadata && USER.user_metadata.nome)  || USER.email.split('@')[0];
-    var setor = (USER.user_metadata && USER.user_metadata.setor) || '';
-    var novoPerfil = { user_id: USER.id, email: USER.email, nome: nome, setor: setor, perfil: 'Consulta', ativo: true, status: 'pendente' };
-    await sb.from('cp_usuarios').insert(novoPerfil);
-    PERFIL = novoPerfil;
+    // Sem cadastro em cp_usuarios: ou o cadastro automatico do banco ainda
+    // nao rodou (raro), ou o gestor excluiu este usuario do sistema. Por
+    // segurança, nao criamos mais um cadastro novo aqui — apenas negamos
+    // o acesso e orientamos a falar com o gestor.
+    await sb.auth.signOut();
+    USER = null; PERFIL = null;
+    document.getElementById('app-screen').style.display    = 'none';
+    document.getElementById('login-screen').style.display  = 'flex';
+    mostrarErro('Não encontramos um cadastro para este usuário. Entre em contato com o gestor do sistema.');
+    return;
   }
 
   // Bloquear quem ainda nao foi aprovado ou teve o acesso recusado pelo gestor.
@@ -2225,6 +2228,10 @@ async function carregarUsuarios() {
     } else {
       acoes = '<button class="btn-icon" onclick="bloquearUsuario(\''+u.id+'\')" title="Bloquear acesso" style="color:#c0392b"><i class="ti ti-lock"></i></button>';
     }
+    var ehVoceMesmo = USER && u.user_id === USER.id;
+    if (!ehVoceMesmo) {
+      acoes += '<button class="btn-icon" onclick="excluirUsuario(\''+u.id+'\', \''+(u.nome||u.email).replace(/'/g,"")+'\')" title="Excluir cadastro" style="color:#c0392b"><i class="ti ti-trash"></i></button>';
+    }
     return '<tr>'+
       '<td>'+u.nome+'</td>'+
       '<td>'+u.email+'</td>'+
@@ -2292,6 +2299,16 @@ async function reativarUsuario(id) {
     if (r.error) throw r.error;
     showToast('Acesso liberado!');
   } catch(e) { showToast('Erro ao liberar acesso: '+(e.message||''), 'error'); console.error(e); }
+  carregarUsuarios();
+}
+
+async function excluirUsuario(id, nome) {
+  if (!confirm('Excluir definitivamente o cadastro de "'+nome+'"?\n\nIsso remove o usuário da lista e do acesso ao sistema. Esta ação não pode ser desfeita.')) return;
+  try {
+    var r = await sb.from('cp_usuarios').delete().eq('id', id);
+    if (r.error) throw r.error;
+    showToast('Cadastro excluído.');
+  } catch(e) { showToast('Erro ao excluir: '+(e.message||''), 'error'); console.error(e); }
   carregarUsuarios();
 }
 
