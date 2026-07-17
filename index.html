@@ -5416,6 +5416,7 @@ async function carregarPagamentos() {
 
 async function renderPagamentos() {
   await carregarPagamentos();
+  await carregarCredoresProcesso();
   renderMetricsPagamentos();
   renderTabelaPagamentos();
 }
@@ -5448,7 +5449,8 @@ function renderTabelaPagamentos() {
   var orgao  = (document.getElementById('pag-filtro-orgao')||{value:''}).value;
 
   var lista = PAGAMENTOS.filter(function(p){
-    var mb = !busca||(p.beneficiario||'').toLowerCase().indexOf(busca)>-1||(p.descricao||'').toLowerCase().indexOf(busca)>-1;
+    var nomesCredores = credoresDoPagamento(p.id).map(function(c){ return (c.credor||'').toLowerCase(); }).join(' ');
+    var mb = !busca||(p.beneficiario||'').toLowerCase().indexOf(busca)>-1||(p.descricao||'').toLowerCase().indexOf(busca)>-1||nomesCredores.indexOf(busca)>-1;
     return mb && (!status||p.status===status) && (!orgao||p.orgao===orgao);
   });
 
@@ -5458,14 +5460,27 @@ function renderTabelaPagamentos() {
 
   tb.innerHTML = lista.map(function(p){
     var sit = PAG_STATUS[p.status]||{bg:'#f3f4f6',cor:'#374151'};
+    var credoresLista = credoresDoPagamento(p.id);
+    var celulaCredor, celulaValor;
+    if (credoresLista.length > 1) {
+      celulaCredor = '<div style="display:flex;flex-direction:column;gap:4px">' +
+        credoresLista.map(function(c){ return '<div>'+(c.credor||'—')+'</div>'; }).join('') +
+      '</div>';
+      celulaValor = '<div style="display:flex;flex-direction:column;gap:4px;text-align:right">' +
+        credoresLista.map(function(c){ return '<div style="font-weight:700;color:#1a3a5c">'+fmtMoeda(c.valor||0)+'</div>'; }).join('') +
+      '</div>';
+    } else {
+      celulaCredor = p.beneficiario||'—';
+      celulaValor = fmtMoeda(p.valor||0);
+    }
     return '<tr>'+
       '<td style="font-size:12px;font-weight:600;color:#1a3a5c">'+(p.prodoc||'—')+'</td>'+
       '<td style="font-size:12px;max-width:260px">'+((objetoDoProcessoVinculado(p)||'—').substring(0,80))+'</td>'+
-      '<td style="font-weight:500">'+(p.beneficiario||'—')+'</td>'+
+      '<td style="font-weight:500">'+celulaCredor+'</td>'+
       '<td style="font-size:12px">'+(PAG_TIPO_L[p.tipo]||p.tipo||'—')+'</td>'+
       '<td style="font-size:12px">'+(p.processo_vinculado||'—')+'</td>'+
       '<td style="font-size:12px">'+(p.orgao||'—')+'</td>'+
-      '<td style="text-align:right;font-weight:700;color:#1a3a5c">'+fmtMoeda(p.valor||0)+'</td>'+
+      '<td style="text-align:right;font-weight:700;color:#1a3a5c">'+celulaValor+'</td>'+
       '<td style="font-size:11px;color:#888">'+fmtDataBR(p.data_pagamento)+'</td>'+
       '<td><span style="background:'+sit.bg+';color:'+sit.cor+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">'+(PAG_STATUS_L[p.status]||p.status)+'</span></td>'+
       '<td style="text-align:right;white-space:nowrap">'+
