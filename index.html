@@ -1679,7 +1679,15 @@ async function doLogin() {
   if (!email || !senha) { mostrarErro('Preencha e-mail e senha.'); return; }
   try {
     var r = await sb.auth.signInWithPassword({ email: email, password: senha });
-    if (r.error) { mostrarErro('Usuário ou senha incorretos.'); return; }
+    if (r.error) {
+      var msgErro = (r.error.message || '').toLowerCase();
+      if (msgErro.indexOf('email not confirmed') !== -1 || msgErro.indexOf('email_not_confirmed') !== -1) {
+        mostrarErro('Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada (e spam) e clique no link de confirmação enviado pelo sistema antes de entrar.');
+      } else {
+        mostrarErro('Usuário ou senha incorretos.');
+      }
+      return;
+    }
     USER = r.data.user;
     await iniciarApp();
   } catch(e) { mostrarErro('Erro ao conectar. Tente novamente.'); }
