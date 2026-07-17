@@ -1695,6 +1695,24 @@ async function doRegister() {
   try {
     var r = await sb.auth.signUp({ email: email, password: senha, options: { data: { nome: nome, setor: setor } } });
     if (r.error) { mostrarErro(r.error.message); return; }
+
+    // Criar o cadastro pendente ja neste momento (se o Supabase liberou uma
+    // sessao logo apos o cadastro), para o gestor ja ver na aba Usuarios
+    // sem depender do novo usuario tentar fazer login depois. Se o projeto
+    // exigir confirmação por e-mail, esta sessão não existe ainda — nesse
+    // caso o cadastro pendente é criado automaticamente no primeiro login,
+    // como reforço.
+    if (r.data && r.data.session && r.data.user) {
+      try {
+        var ins = await sb.from('cp_usuarios').insert({
+          user_id: r.data.user.id, email: email, nome: nome, setor: setor,
+          perfil: 'Consulta', ativo: true, status: 'pendente'
+        });
+        if (ins.error) console.warn('Não foi possível pré-criar o cadastro pendente:', ins.error);
+      } catch(e2) { console.warn('Não foi possível pré-criar o cadastro pendente:', e2); }
+      await sb.auth.signOut();
+    }
+
     mostrarErro('✅ Cadastro enviado! Seu acesso depende da aprovação do gestor do sistema. Você poderá entrar assim que for aprovado.');
     setLoginTab('login');
   } catch(e) { mostrarErro('Erro ao criar conta.'); }
