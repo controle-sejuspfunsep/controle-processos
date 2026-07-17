@@ -1414,6 +1414,17 @@ tr:hover td{background:#f8fafc}
                   <option value="FUNSEP">FUNSEP</option>
                 </select>
               </div>
+              <div class="form-group full" style="margin-top:2px">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400">
+                  <input type="checkbox" id="pag-multi-credor" onchange="togglePagMultiCredor()" style="width:auto">
+                  Este processo de pagamento possui mais de um credor
+                </label>
+              </div>
+              <div class="form-group full" id="pag-multi-credor-wrap" style="display:none">
+                <div id="lista-credores-pagamento"></div>
+                <button type="button" class="btn-secondary" onclick="adicionarLinhaCredorPag()"><i class="ti ti-plus"></i> Adicionar credor</button>
+                <div style="font-size:11px;color:#888;margin-top:8px"><i class="ti ti-info-circle"></i> Informe cada credor e o valor correspondente (mesmo que este pagamento não esteja vinculado a nenhum processo SIGA).</div>
+              </div>
               <div class="form-group"><label>Número PRODOC</label>
                 <input type="text" class="form-input" id="pag-prodoc" placeholder="Nº do processo PRODOC"></div>
               <div class="form-group"><label>Tipo</label>
@@ -3635,6 +3646,7 @@ function toggleSenha(id, btn) {
 var CONTRATOS = [];
 var CREDORES_PROCESSO = [];
 var credoresTemp = [];
+var credoresPagTemp = [];
 var aditivosTemp = [];
 
 // ── FUNÇÕES GENÉRICAS DE MODAL ──
@@ -3686,6 +3698,11 @@ async function carregarCredoresProcesso() {
 function credoresDoProcesso(processoId) {
   if (!processoId) return [];
   return CREDORES_PROCESSO.filter(function(c){ return c.processo_id == processoId; });
+}
+
+function credoresDoPagamento(pagamentoId) {
+  if (!pagamentoId) return [];
+  return CREDORES_PROCESSO.filter(function(c){ return c.pagamento_id == pagamentoId; });
 }
 
 function diasRestantes(dataFim) {
@@ -5501,10 +5518,72 @@ function atualizarConfirmacaoProcessoPagamento() {
   conf.innerHTML = '<i class="ti ti-link"></i> Vinculado a: ' + (p.siga||'sem SIGA'); conf.style.color = '#0a6640'; conf.style.fontWeight = '700';
 }
 
+function togglePagMultiCredor() {
+  var chk = document.getElementById('pag-multi-credor').checked;
+  document.getElementById('pag-multi-credor-wrap').style.display = chk ? '' : 'none';
+  if (chk && !credoresPagTemp.length) adicionarLinhaCredorPag();
+  if (!chk) { credoresPagTemp = []; renderCredoresPagTemp(); }
+}
+
+function adicionarLinhaCredorPag() {
+  credoresPagTemp.push({credor:'', cpf_cnpj:'', valor:''});
+  renderCredoresPagTemp();
+}
+
+function removerLinhaCredorPag(idx) {
+  credoresPagTemp.splice(idx,1);
+  renderCredoresPagTemp();
+  if (!credoresPagTemp.length) {
+    var chkEl = document.getElementById('pag-multi-credor');
+    if (chkEl) chkEl.checked = false;
+    var wrapEl = document.getElementById('pag-multi-credor-wrap');
+    if (wrapEl) wrapEl.style.display = 'none';
+  }
+}
+
+function atualizarLinhaCredorPag(idx, campo, valor) {
+  if (!credoresPagTemp[idx]) return;
+  credoresPagTemp[idx][campo] = valor;
+}
+
+function renderCredoresPagTemp() {
+  var wrap = document.getElementById('lista-credores-pagamento');
+  if (!wrap) return;
+  wrap.innerHTML = credoresPagTemp.map(function(c, i){
+    return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center">'+
+      '<input type="text" class="form-input" placeholder="Nome ou razão social do credor" value="'+(c.credor||'').replace(/"/g,'&quot;')+'" oninput="atualizarLinhaCredorPag('+i+',\'credor\',this.value)">'+
+      '<input type="text" class="form-input" placeholder="CPF/CNPJ" value="'+(c.cpf_cnpj||'').replace(/"/g,'&quot;')+'" oninput="atualizarLinhaCredorPag('+i+',\'cpf_cnpj\',this.value)">'+
+      '<input type="number" step="0.01" class="form-input" placeholder="Valor (R$)" value="'+(c.valor||'')+'" oninput="atualizarLinhaCredorPag('+i+',\'valor\',this.value)">'+
+      '<button type="button" onclick="removerLinhaCredorPag('+i+')" title="Remover" style="background:none;border:none;color:#c0392b;cursor:pointer"><i class="ti ti-trash"></i></button>'+
+    '</div>';
+  }).join('') || '<div style="font-size:12px;color:#aaa;padding:6px 0">Nenhum credor adicionado ainda.</div>';
+}
+
+async function salvarCredoresPagamento(pagamentoId, processoId) {
+  try {
+    await sb.from('cp_processo_credores').delete().eq('pagamento_id', String(pagamentoId));
+    var multi = document.getElementById('pag-multi-credor').checked;
+    if (multi && credoresPagTemp.length) {
+      var linhas = credoresPagTemp
+        .filter(function(c){ return (c.credor||'').trim(); })
+        .map(function(c){ return { pagamento_id: String(pagamentoId), processo_id: processoId ? String(processoId) : null, credor: c.credor.trim(), cpf_cnpj: (c.cpf_cnpj||'').trim(), valor: parseFloat(c.valor)||0 }; });
+      if (linhas.length) {
+        var r = await sb.from('cp_processo_credores').insert(linhas);
+        if (r.error) throw r.error;
+      }
+    }
+    await carregarCredoresProcesso();
+  } catch(e) {
+    console.error('Erro ao salvar credores do pagamento:', e);
+    showToast('Pagamento salvo, mas houve um erro ao salvar os credores: '+(e.message||''), 'error');
+  }
+}
+
 async function abrirModalPagamento(id) {
   document.getElementById('pagamento-edit-id').value = id||'';
   document.getElementById('m-pagamento-title').textContent = id?'Editar processo de pagamento':'Novo processo de pagamento';
   await popularSelectProcessoPagamento('');
+  await carregarCredoresProcesso();
   if (id) {
     var p = PAGAMENTOS.find(function(x){return x.id==id;});
     if (p) {
@@ -5522,6 +5601,8 @@ async function abrirModalPagamento(id) {
       document.getElementById('pag-data').value             = p.data_pagamento||'';
       document.getElementById('pag-status').value           = p.status||'solicitado';
       document.getElementById('pag-obs').value              = p.obs||'';
+      var credoresExistentesPag = credoresDoPagamento(p.id);
+      credoresPagTemp = credoresExistentesPag.map(function(c){ return {credor:c.credor||'', cpf_cnpj:c.cpf_cnpj||'', valor:c.valor||''}; });
     }
   } else {
     ['pag-beneficiario','pag-cpf-cnpj','pag-prodoc','pag-descricao','pag-valor','pag-data','pag-obs'].forEach(function(f){
@@ -5531,7 +5612,13 @@ async function abrirModalPagamento(id) {
     document.getElementById('pag-orgao').value  = 'SEJUSP';
     document.getElementById('pag-tipo').value   = 'fornecedor';
     document.getElementById('pag-status').value = 'solicitado';
+    credoresPagTemp = [];
   }
+  var chkPagCredor = document.getElementById('pag-multi-credor');
+  if (chkPagCredor) chkPagCredor.checked = credoresPagTemp.length > 0;
+  var wrapPagCredor = document.getElementById('pag-multi-credor-wrap');
+  if (wrapPagCredor) wrapPagCredor.style.display = credoresPagTemp.length > 0 ? '' : 'none';
+  renderCredoresPagTemp();
   abrirModal('m-pagamento');
 }
 
@@ -5565,9 +5652,15 @@ async function salvarPagamento() {
   var editId = document.getElementById('pagamento-edit-id').value;
   try {
     var r;
-    if (editId) r = await sb.from('cp_pagamentos').update(payload).eq('id', editId);
-    else r = await sb.from('cp_pagamentos').insert(payload);
+    var pagamentoIdParaCredores = editId;
+    if (editId) {
+      r = await sb.from('cp_pagamentos').update(payload).eq('id', editId);
+    } else {
+      r = await sb.from('cp_pagamentos').insert(payload).select().single();
+      pagamentoIdParaCredores = r.data ? r.data.id : null;
+    }
     if (r.error) throw r.error;
+    if (pagamentoIdParaCredores) await salvarCredoresPagamento(pagamentoIdParaCredores, processoId);
     fecharModal('m-pagamento');
     await carregarPagamentos();
     renderPagamentos();
