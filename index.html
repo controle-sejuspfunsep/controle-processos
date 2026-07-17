@@ -482,6 +482,19 @@ tr:hover td{background:#f8fafc}
             <div class="form-group"><label>Órgão a atender</label><input type="text" id="f-orgao-atender" placeholder="Ex: PMAP, PCAP, CBMAP, SEJUSP..."/></div>
           </div>
           <hr class="divider"/>
+          <div class="sec-label">Credores do Processo</div>
+          <div class="form-group full" style="margin-bottom:10px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400">
+              <input type="checkbox" id="f-multi-credor" onchange="toggleMultiCredor()" style="width:auto">
+              Este processo possui mais de um credor
+            </label>
+          </div>
+          <div id="multi-credor-wrap" style="display:none;margin-bottom:14px">
+            <div id="lista-credores-processo"></div>
+            <button type="button" class="btn-secondary" onclick="adicionarLinhaCredor()"><i class="ti ti-plus"></i> Adicionar credor</button>
+            <div style="font-size:11px;color:#888;margin-top:8px"><i class="ti ti-info-circle"></i> Informe cada credor e o valor destinado a ele. Esses credores ficam disponíveis para seleção ao cadastrar o Empenho (Núcleo Financeiro) e o Contrato (Núcleo de Contratos e Convênios).</div>
+          </div>
+          <hr class="divider"/>
           <div class="sec-label">3. Status do Processo</div>
           <div class="status-select" id="status-select">
             <div class="status-opt" data-s="em_andamento" onclick="selectStatus('em_andamento')"><i class="ti ti-refresh"></i> Em andamento</div>
@@ -961,6 +974,12 @@ tr:hover td{background:#f8fafc}
                 </select>
                 <div id="emp-processo-info" style="font-size:11px;margin-top:4px;color:#888">Selecione o processo para preencher Unidade Gestora e Credor automaticamente.</div>
               </div>
+              <div class="form-group full" id="emp-fin-credor-especifico-wrap" style="display:none">
+                <label>Fornecedor específico (este processo tem mais de um credor)</label>
+                <select id="emp-fin-credor-especifico" class="form-input" onchange="selecionarCredorEspecificoEmpenho()">
+                  <option value="">Selecionar fornecedor...</option>
+                </select>
+              </div>
               <div class="form-group"><label>Número do documento</label><input type="text" id="emp-fin-numero" class="form-input" placeholder="Ex: 2026NE00435"></div>
               <div class="form-group"><label>Data do empenho</label><input type="date" id="emp-fin-data" class="form-input"></div>
               <div class="form-group"><label>Unidade Gestora</label>
@@ -1032,6 +1051,12 @@ tr:hover td{background:#f8fafc}
                   <option value="">Selecionar processo...</option>
                 </select>
                 <div id="cont-processo-info" style="font-size:11px;margin-top:4px;color:#888">Selecione o processo para preencher automaticamente Órgão, Objeto e PRODOC.</div>
+              </div>
+              <div class="form-group full" id="cont-credor-especifico-wrap" style="display:none;margin-top:12px">
+                <label>Fornecedor específico (este processo tem mais de um credor)</label>
+                <select class="form-input" id="cont-credor-especifico" onchange="selecionarCredorEspecificoContrato()">
+                  <option value="">Selecionar fornecedor...</option>
+                </select>
               </div>
             </div>
 
@@ -2098,6 +2123,67 @@ function calcularDiasAta() {
   }
 }
 
+function toggleMultiCredor() {
+  var chk = document.getElementById('f-multi-credor').checked;
+  document.getElementById('multi-credor-wrap').style.display = chk ? '' : 'none';
+  if (chk && !credoresTemp.length) adicionarLinhaCredor();
+  if (!chk) { credoresTemp = []; renderCredoresTemp(); }
+}
+
+function adicionarLinhaCredor() {
+  credoresTemp.push({credor:'', cpf_cnpj:'', valor:''});
+  renderCredoresTemp();
+}
+
+function removerLinhaCredor(idx) {
+  credoresTemp.splice(idx,1);
+  renderCredoresTemp();
+  if (!credoresTemp.length) {
+    var chkEl = document.getElementById('f-multi-credor');
+    if (chkEl) chkEl.checked = false;
+    var wrapEl = document.getElementById('multi-credor-wrap');
+    if (wrapEl) wrapEl.style.display = 'none';
+  }
+}
+
+function atualizarLinhaCredor(idx, campo, valor) {
+  if (!credoresTemp[idx]) return;
+  credoresTemp[idx][campo] = valor;
+}
+
+function renderCredoresTemp() {
+  var wrap = document.getElementById('lista-credores-processo');
+  if (!wrap) return;
+  wrap.innerHTML = credoresTemp.map(function(c, i){
+    return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center">'+
+      '<input type="text" class="form-input" placeholder="Nome ou razão social do credor" value="'+(c.credor||'').replace(/"/g,'&quot;')+'" oninput="atualizarLinhaCredor('+i+',\'credor\',this.value)">'+
+      '<input type="text" class="form-input" placeholder="CPF/CNPJ" value="'+(c.cpf_cnpj||'').replace(/"/g,'&quot;')+'" oninput="atualizarLinhaCredor('+i+',\'cpf_cnpj\',this.value)">'+
+      '<input type="number" step="0.01" class="form-input" placeholder="Valor (R$)" value="'+(c.valor||'')+'" oninput="atualizarLinhaCredor('+i+',\'valor\',this.value)">'+
+      '<button type="button" onclick="removerLinhaCredor('+i+')" title="Remover" style="background:none;border:none;color:#c0392b;cursor:pointer"><i class="ti ti-trash"></i></button>'+
+    '</div>';
+  }).join('') || '<div style="font-size:12px;color:#aaa;padding:6px 0">Nenhum credor adicionado ainda.</div>';
+}
+
+async function salvarCredoresProcesso(processoId) {
+  try {
+    await sb.from('cp_processo_credores').delete().eq('processo_id', String(processoId));
+    var multi = document.getElementById('f-multi-credor').checked;
+    if (multi && credoresTemp.length) {
+      var linhas = credoresTemp
+        .filter(function(c){ return (c.credor||'').trim(); })
+        .map(function(c){ return { processo_id: String(processoId), credor: c.credor.trim(), cpf_cnpj: (c.cpf_cnpj||'').trim(), valor: parseFloat(c.valor)||0 }; });
+      if (linhas.length) {
+        var r = await sb.from('cp_processo_credores').insert(linhas);
+        if (r.error) throw r.error;
+      }
+    }
+    await carregarCredoresProcesso();
+  } catch(e) {
+    console.error('Erro ao salvar credores do processo:', e);
+    showToast('Processo salvo, mas houve um erro ao salvar os credores: '+(e.message||''), 'error');
+  }
+}
+
 function resetForm() {
   editId=null; selectedOrgao=''; selectedStatus='';
   document.getElementById('form-title').textContent = 'Novo Processo';
@@ -2116,6 +2202,10 @@ function resetForm() {
   if (ataWrap) ataWrap.style.display='none';
   var diasV = document.getElementById('ata-vigencia-dias'); if (diasV) diasV.textContent='';
   var dias90 = document.getElementById('ata-prazo90-dias'); if (dias90) dias90.textContent='';
+  credoresTemp = [];
+  var chkCredor = document.getElementById('f-multi-credor'); if (chkCredor) chkCredor.checked = false;
+  var wrapCredor = document.getElementById('multi-credor-wrap'); if (wrapCredor) wrapCredor.style.display = 'none';
+  renderCredoresTemp();
 }
 
 async function salvarProcesso() {
@@ -2146,24 +2236,38 @@ async function salvarProcesso() {
   };
 
   try {
+    var processoIdParaCredores = editId;
     if (editId) {
-      await sb.from('cp_processos').update(payload).eq('id', editId);
+      var r = await sb.from('cp_processos').update(payload).eq('id', editId);
+      if (r.error) throw r.error;
       showToast('Processo atualizado com sucesso!');
     } else {
-      await sb.from('cp_processos').insert(payload);
+      var r = await sb.from('cp_processos').insert(payload).select().single();
+      if (r.error) throw r.error;
+      processoIdParaCredores = r.data ? r.data.id : null;
       showToast('Processo salvo com sucesso!');
     }
+    if (processoIdParaCredores) await salvarCredoresProcesso(processoIdParaCredores);
     await carregarProcessos();
     resetForm();
     showPage('processos', document.getElementById('nav-processos'));
     renderDashboard(); renderTable();
-  } catch(e) { showToast('Erro ao salvar processo.','error'); }
+  } catch(e) { showToast('Erro ao salvar processo: '+(e.message||''),'error'); console.error(e); }
 }
 
-function editarProcesso(id) {
+async function editarProcesso(id) {
   var p = processos.find(function(x){ return x.id==id; });
   if (!p) return;
   editId = id;
+
+  await carregarCredoresProcesso();
+  var credoresExistentes = credoresDoProcesso(p.id);
+  credoresTemp = credoresExistentes.map(function(c){ return {credor:c.credor||'', cpf_cnpj:c.cpf_cnpj||'', valor:c.valor||''}; });
+  var chkCredorEdit = document.getElementById('f-multi-credor');
+  if (chkCredorEdit) chkCredorEdit.checked = credoresTemp.length > 0;
+  var wrapCredorEdit = document.getElementById('multi-credor-wrap');
+  if (wrapCredorEdit) wrapCredorEdit.style.display = credoresTemp.length > 0 ? '' : 'none';
+  renderCredoresTemp();
 
   // Navegar para a página sem chamar resetForm()
   document.querySelectorAll('.page').forEach(function(pg){ pg.classList.remove('active'); });
@@ -3271,6 +3375,7 @@ async function abrirModalEmpenho(id) {
   // do processo selecionado (Contratos e Pagamentos vinculados).
   await carregarContratos();
   await carregarPagamentos();
+  await carregarCredoresProcesso();
 
   // Popular select de processos
   var selProc = document.getElementById('emp-fin-processo');
@@ -3302,6 +3407,7 @@ async function abrirModalEmpenho(id) {
       atualizarCamposUG();
       atualizarInfoConta();
       atualizarInfoProcessoEmpenho();
+      popularCredorEspecificoEmpenho(e.credor);
     }
   } else {
     ['emp-fin-numero','emp-fin-obs','emp-fin-credor'].forEach(function(f){document.getElementById(f).value='';});
@@ -3316,6 +3422,7 @@ async function abrirModalEmpenho(id) {
     document.getElementById('emp-alerta-saldo').style.display='none';
     atualizarCamposUG();
     atualizarInfoProcessoEmpenho();
+    popularCredorEspecificoEmpenho();
   }
   abrirModal('m-empenho-fin');
 }
@@ -3388,23 +3495,69 @@ function atualizarInfoProcessoEmpenho() {
 
 function preencherCamposProcesso() {
   var siga = document.getElementById('emp-fin-processo').value;
-  if (!siga) { atualizarInfoProcessoEmpenho(); return; }
+  if (!siga) { atualizarInfoProcessoEmpenho(); popularCredorEspecificoEmpenho(); return; }
   var proc = processos.find(function(p){return p.siga===siga;});
-  if (!proc) { atualizarInfoProcessoEmpenho(); return; }
+  if (!proc) { atualizarInfoProcessoEmpenho(); popularCredorEspecificoEmpenho(); return; }
 
   // Unidade Gestora: assume a do processo
   document.getElementById('emp-fin-ug').value = proc.orgao || 'SEJUSP';
   atualizarCamposUG();
 
-  // Credor: assume a Contratada do Nucleo de Contratos vinculada a este
-  // processo; se ainda nao houver contrato, usa o beneficiario do Processo
-  // de Pagamento vinculado.
-  var d = dadosDerivadosProcesso(proc);
-  var pagamentoVinc = (typeof PAGAMENTOS!=='undefined') ? PAGAMENTOS.find(function(pg){ return pg.processo_id==proc.id; }) : null;
-  var credor = d.contratada || (pagamentoVinc ? pagamentoVinc.beneficiario : '') || '';
-  if (credor) document.getElementById('emp-fin-credor').value = credor;
+  // Se este processo tiver mais de um credor cadastrado, o usuario escolhe
+  // o fornecedor especifico no campo dedicado (abaixo) - nao adivinhamos.
+  var listaCredores = credoresDoProcesso(proc.id);
+  if (listaCredores.length <= 1) {
+    // Credor: assume a Contratada do Nucleo de Contratos vinculada a este
+    // processo; se ainda nao houver contrato, usa o beneficiario do Processo
+    // de Pagamento vinculado.
+    var d = dadosDerivadosProcesso(proc);
+    var pagamentoVinc = (typeof PAGAMENTOS!=='undefined') ? PAGAMENTOS.find(function(pg){ return pg.processo_id==proc.id; }) : null;
+    var credor = (listaCredores[0] && listaCredores[0].credor) || d.contratada || (pagamentoVinc ? pagamentoVinc.beneficiario : '') || '';
+    if (credor) document.getElementById('emp-fin-credor').value = credor;
+  } else {
+    document.getElementById('emp-fin-credor').value = '';
+  }
 
   atualizarInfoProcessoEmpenho();
+  popularCredorEspecificoEmpenho();
+}
+
+// Popula (e mostra/esconde) o campo "Fornecedor especifico", usado quando
+// o processo vinculado tem mais de um credor cadastrado. Se informado,
+// tenta pre-selecionar o credor cujo nome bate com preselecionarNome
+// (usado ao reabrir um empenho ja salvo para edicao).
+function popularCredorEspecificoEmpenho(preselecionarNome) {
+  var siga = document.getElementById('emp-fin-processo').value;
+  var wrapEsp = document.getElementById('emp-fin-credor-especifico-wrap');
+  var selEsp = document.getElementById('emp-fin-credor-especifico');
+  if (!wrapEsp || !selEsp) return;
+  var proc = processos.find(function(p){return p.siga===siga;});
+  var lista = proc ? credoresDoProcesso(proc.id) : [];
+  if (lista.length > 1) {
+    selEsp.innerHTML = '<option value="">Selecionar fornecedor...</option>' +
+      lista.map(function(c,i){ return '<option value="'+i+'">'+c.credor+' — '+fmtMoeda(c.valor||0)+'</option>'; }).join('');
+    if (preselecionarNome) {
+      var idxMatch = lista.findIndex(function(c){ return c.credor===preselecionarNome; });
+      if (idxMatch>=0) selEsp.value = String(idxMatch);
+    }
+    wrapEsp.style.display = '';
+  } else {
+    wrapEsp.style.display = 'none';
+    selEsp.innerHTML = '<option value="">Selecionar fornecedor...</option>';
+  }
+}
+
+function selecionarCredorEspecificoEmpenho() {
+  var siga = document.getElementById('emp-fin-processo').value;
+  var proc = processos.find(function(p){return p.siga===siga;});
+  if (!proc) return;
+  var idx = document.getElementById('emp-fin-credor-especifico').value;
+  if (idx === '') return;
+  var c = credoresDoProcesso(proc.id)[idx];
+  if (!c) return;
+  document.getElementById('emp-fin-credor').value = c.credor || '';
+  if (c.valor) document.getElementById('emp-fin-valor').value = c.valor;
+  validarSaldoEmpenho();
 }
 
 async function salvarEmpenhoFin() {
@@ -3480,6 +3633,8 @@ function toggleSenha(id, btn) {
 }
 
 var CONTRATOS = [];
+var CREDORES_PROCESSO = [];
+var credoresTemp = [];
 var aditivosTemp = [];
 
 // ── FUNÇÕES GENÉRICAS DE MODAL ──
@@ -3518,6 +3673,19 @@ async function carregarContratos() {
     var r = await sb.from('contratos').select('*').order('created_at', {ascending:false});
     if (!r.error) CONTRATOS = r.data||[];
   } catch(e) { console.warn('Erro ao carregar contratos:', e); }
+}
+
+// ── CREDORES DO PROCESSO (quando um processo tem mais de um credor) ──
+async function carregarCredoresProcesso() {
+  try {
+    var r = await sb.from('cp_processo_credores').select('*');
+    if (!r.error) CREDORES_PROCESSO = r.data||[];
+  } catch(e) { CREDORES_PROCESSO = []; }
+}
+
+function credoresDoProcesso(processoId) {
+  if (!processoId) return [];
+  return CREDORES_PROCESSO.filter(function(c){ return c.processo_id == processoId; });
 }
 
 function diasRestantes(dataFim) {
@@ -3707,9 +3875,9 @@ function atualizarInfoProcessoContrato() {
 
 function preencherCamposContrato() {
   var siga = document.getElementById('cont-siga').value;
-  if (!siga) { atualizarInfoProcessoContrato(); return; }
+  if (!siga) { atualizarInfoProcessoContrato(); popularCredorEspecificoContrato(); return; }
   var proc = processos.find(function(p){ return p.siga===siga; });
-  if (!proc) { atualizarInfoProcessoContrato(); return; }
+  if (!proc) { atualizarInfoProcessoContrato(); popularCredorEspecificoContrato(); return; }
 
   // Assume as informacoes ja cadastradas no Processo, para o usuario so
   // completar o que for especifico do contrato.
@@ -3719,10 +3887,18 @@ function preencherCamposContrato() {
   else if (proc.tipo === 'Serviços') document.getElementById('cont-tipo').value = 'servico';
   toggleServicoContinuo();
 
-  // Empresa/Credor/Beneficiario: assume o que ja foi cadastrado no
-  // Processo de Pagamento vinculado a este processo.
-  var pagamentoVinc = (typeof PAGAMENTOS!=='undefined') ? PAGAMENTOS.find(function(pg){ return pg.processo_id==proc.id; }) : null;
-  if (pagamentoVinc && pagamentoVinc.beneficiario) document.getElementById('cont-empresa').value = pagamentoVinc.beneficiario;
+  // Se este processo tiver mais de um credor cadastrado, o usuario escolhe
+  // o fornecedor especifico no campo dedicado (abaixo) - nao adivinhamos.
+  var listaCredores = credoresDoProcesso(proc.id);
+  if (listaCredores.length <= 1) {
+    // Empresa/Credor/Beneficiario: assume o que ja foi cadastrado no
+    // Processo de Pagamento vinculado a este processo.
+    var pagamentoVinc = (typeof PAGAMENTOS!=='undefined') ? PAGAMENTOS.find(function(pg){ return pg.processo_id==proc.id; }) : null;
+    var empresaSugerida = (listaCredores[0] && listaCredores[0].credor) || (pagamentoVinc ? pagamentoVinc.beneficiario : '') || '';
+    if (empresaSugerida) document.getElementById('cont-empresa').value = empresaSugerida;
+  } else {
+    document.getElementById('cont-empresa').value = '';
+  }
 
   // Nota de empenho: assume a que ja foi cadastrada no Nucleo Financeiro
   // para este mesmo processo (SIGA).
@@ -3733,6 +3909,43 @@ function preencherCamposContrato() {
   if (d.prodoc) document.getElementById('cont-prodoc').value = d.prodoc;
 
   atualizarInfoProcessoContrato();
+  popularCredorEspecificoContrato();
+}
+
+// Popula (e mostra/esconde) o campo "Fornecedor especifico", usado quando
+// o processo vinculado tem mais de um credor cadastrado. Se informado,
+// tenta pre-selecionar o credor cujo nome bate com preselecionarNome
+// (usado ao reabrir um contrato ja salvo para edicao).
+function popularCredorEspecificoContrato(preselecionarNome) {
+  var siga = document.getElementById('cont-siga').value;
+  var wrapEsp = document.getElementById('cont-credor-especifico-wrap');
+  var selEsp = document.getElementById('cont-credor-especifico');
+  if (!wrapEsp || !selEsp) return;
+  var proc = processos.find(function(p){ return p.siga===siga; });
+  var lista = proc ? credoresDoProcesso(proc.id) : [];
+  if (lista.length > 1) {
+    selEsp.innerHTML = '<option value="">Selecionar fornecedor...</option>' +
+      lista.map(function(c,i){ return '<option value="'+i+'">'+c.credor+' — '+fmtMoeda(c.valor||0)+'</option>'; }).join('');
+    if (preselecionarNome) {
+      var idxMatch = lista.findIndex(function(c){ return c.credor===preselecionarNome; });
+      if (idxMatch>=0) selEsp.value = String(idxMatch);
+    }
+    wrapEsp.style.display = '';
+  } else {
+    wrapEsp.style.display = 'none';
+    selEsp.innerHTML = '<option value="">Selecionar fornecedor...</option>';
+  }
+}
+
+function selecionarCredorEspecificoContrato() {
+  var siga = document.getElementById('cont-siga').value;
+  var proc = processos.find(function(p){ return p.siga===siga; });
+  if (!proc) return;
+  var idx = document.getElementById('cont-credor-especifico').value;
+  if (idx === '') return;
+  var c = credoresDoProcesso(proc.id)[idx];
+  if (!c) return;
+  document.getElementById('cont-empresa').value = c.credor || '';
 }
 
 function popularSelectSIGAContrato() {
@@ -3790,6 +4003,7 @@ async function abrirModalContrato(id) {
 
   await carregarPagamentos();
   await carregarFinanceiro();
+  await carregarCredoresProcesso();
   popularSelectSIGAContrato();
 
   if (id) {
@@ -3817,6 +4031,7 @@ async function abrirModalContrato(id) {
       document.getElementById('cont-obs').value        = c.obs||'';
       aditivosTemp = c.aditivos ? JSON.parse(JSON.stringify(c.aditivos)) : [];
       atualizarInfoProcessoContrato();
+      popularCredorEspecificoContrato(c.empresa);
     }
   } else {
     ['cont-numero','cont-empresa','cont-empenho','cont-valor','cont-pub',
@@ -3830,6 +4045,7 @@ async function abrirModalContrato(id) {
     document.getElementById('cont-status').value='vigente';
     document.getElementById('cont-siga').value='';
     atualizarInfoProcessoContrato();
+    popularCredorEspecificoContrato();
   }
 
   toggleServicoContinuo();
