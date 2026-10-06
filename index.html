@@ -4,6 +4,13 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Controle de Processos — SEJUSP/FUNSEP</title>
+<link rel="manifest" href="/manifest.webmanifest"/>
+<meta name="theme-color" content="#1a3a5c"/>
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png"/>
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Processos SEJUSP"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -6659,6 +6666,70 @@ function toggleTheme() {
 })();
 
 verificarSessao();
+</script>
+<!-- ══ INSTALAR COMO PROGRAMA (atalho na área de trabalho) ══ -->
+<div id="pwa-banner" style="display:none;position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:99999;width:calc(100% - 32px);max-width:460px;background:#fff;border:1px solid #d6dee8;border-radius:14px;box-shadow:0 10px 30px rgba(26,58,92,.25);padding:16px 18px;font-family:Arial,sans-serif">
+  <div style="display:flex;gap:14px;align-items:flex-start">
+    <img src="/icons/icon-192.png" alt="" style="width:46px;height:46px;border-radius:10px;flex-shrink:0">
+    <div style="flex:1">
+      <div style="font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:4px">Instalar o Controle de Processos?</div>
+      <div id="pwa-banner-texto" style="font-size:12px;color:#555;line-height:1.5">Crie um atalho na área de trabalho e abra o sistema como um programa, em janela própria, sem precisar digitar o endereço.</div>
+      <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+        <button type="button" onclick="pwaDispensar()" style="font-size:12px;background:#fff;color:#555;border:1px solid #ccc;border-radius:7px;padding:7px 14px;cursor:pointer">Agora não</button>
+        <button type="button" id="pwa-btn-instalar" onclick="pwaInstalar()" style="font-size:12px;font-weight:700;background:#1a3a5c;color:#fff;border:none;border-radius:7px;padding:7px 16px;cursor:pointer"><i class="ti ti-download"></i> Instalar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var deferredPrompt = null;
+  var CHAVE = 'cp_pwa_dispensado_em';
+  function jaInstalado(){
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  }
+  function dispensadoRecentemente(){
+    try { var t = parseInt(localStorage.getItem(CHAVE)||'0',10); return t && (Date.now()-t) < 7*24*60*60*1000; } catch(e){ return false; }
+  }
+  function mostrar(textoIOS){
+    if (jaInstalado() || dispensadoRecentemente()) return;
+    var b = document.getElementById('pwa-banner'); if (!b) return;
+    if (textoIOS) {
+      document.getElementById('pwa-banner-texto').innerHTML = 'No iPhone/iPad: toque em <strong>Compartilhar</strong> <i class="ti ti-share"></i> e depois em <strong>Adicionar à Tela de Início</strong>.';
+      document.getElementById('pwa-btn-instalar').style.display = 'none';
+    }
+    b.style.display = 'block';
+  }
+  window.pwaDispensar = function(){
+    try { localStorage.setItem(CHAVE, String(Date.now())); } catch(e){}
+    document.getElementById('pwa-banner').style.display = 'none';
+  };
+  window.pwaInstalar = function(){
+    document.getElementById('pwa-banner').style.display = 'none';
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function(r){
+      if (r && r.outcome !== 'accepted') { try { localStorage.setItem(CHAVE, String(Date.now())); } catch(e){} }
+      deferredPrompt = null;
+    });
+  };
+  // Chrome e Edge (Windows, Android): o navegador avisa que o sistema pode ser instalado
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredPrompt = e;
+    setTimeout(function(){ mostrar(false); }, 1500);
+  });
+  window.addEventListener('appinstalled', function(){
+    var b = document.getElementById('pwa-banner'); if (b) b.style.display = 'none';
+    if (typeof showToast === 'function') showToast('Sistema instalado! Procure o ícone "Processos SEJUSP" na área de trabalho.');
+  });
+  // Safari no iPhone/iPad nao tem o aviso automatico: mostramos as instrucoes
+  var ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua)) setTimeout(function(){ mostrar(true); }, 2000);
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(err){ console.warn('SW nao registrado', err); }); });
+  }
+})();
 </script>
 </body>
 </html>

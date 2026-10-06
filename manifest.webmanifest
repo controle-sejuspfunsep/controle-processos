@@ -1,0 +1,17 @@
+{
+  "name": "Controle de Processos — SEJUSP/FUNSEP",
+  "short_name": "Processos SEJUSP",
+  "description": "Controle de processos, empenhos, contratos e pagamentos da SEJUSP/FUNSEP",
+  "lang": "pt-BR",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f4f4",
+  "theme_color": "#1a3a5c",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
