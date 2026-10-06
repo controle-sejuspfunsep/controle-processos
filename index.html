@@ -1103,8 +1103,9 @@ tr:hover td{background:#f8fafc}
             <!-- FINANCEIRO E PRAZOS -->
             <div class="sec-label" style="margin-bottom:10px">2. Financeiro e prazos</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-              <div class="form-group"><label>Nota de empenho</label><input type="text" class="form-input" id="cont-empenho" placeholder="Ex: 2024NE00123"></div>
-              <div class="form-group"><label>Valor total (R$)</label><input type="number" step="0.01" class="form-input" id="cont-valor" placeholder="0,00"></div>
+              <div class="form-group"><label>Nota(s) de empenho</label><input type="text" class="form-input" id="cont-empenho" placeholder="Ex: 2024NE00123, 2024NE00145"></div>
+              <div class="form-group"><label>Valor total (R$)</label><input type="number" step="0.01" class="form-input" id="cont-valor" placeholder="0,00" oninput="renderEmpenhosContrato(false)"></div>
+              <div class="form-group full" id="cont-empenhos-vinc" style="display:none;grid-column:1/-1"></div>
               <div class="form-group"><label>Data de publicação</label><input type="date" class="form-input" id="cont-pub"></div>
               <div class="form-group"><label>Início da vigência</label><input type="date" class="form-input" id="cont-inicio"></div>
               <div class="form-group"><label>Fim da vigência</label><input type="date" class="form-input" id="cont-fim" oninput="calcularDiasRestantes()"></div>
@@ -3949,6 +3950,7 @@ function verificarAlertasContratos() {
 // ── RENDER PRINCIPAL ──
 async function renderContratos() {
   await carregarContratos();
+  await carregarFinanceiro();
   popularFiltroAnoContratos();
   renderMetricsContratos();
   renderTabelaContratos();
@@ -4102,10 +4104,9 @@ function preencherCamposContrato() {
     document.getElementById('cont-empresa').value = '';
   }
 
-  // Nota de empenho: assume a que ja foi cadastrada no Nucleo Financeiro
-  // para este mesmo processo (SIGA).
-  var empenhoVinc = (typeof EMPENHOS_FIN!=='undefined') ? EMPENHOS_FIN.find(function(e){ return e.processo_siga===proc.siga && e.situacao!=='anulado'; }) : null;
-  if (empenhoVinc && empenhoVinc.numero) document.getElementById('cont-empenho').value = empenhoVinc.numero;
+  // Notas de empenho: assume TODAS as que ja foram cadastradas no Nucleo
+  // Financeiro para este mesmo processo (SIGA) e soma o valor total.
+  aplicarEmpenhosContrato();
 
   var d = dadosDerivadosProcesso(proc);
   if (d.prodoc) document.getElementById('cont-prodoc').value = d.prodoc;
@@ -4148,7 +4149,78 @@ function selecionarCredorEspecificoContrato() {
   var c = credoresDoProcesso(proc.id)[idx];
   if (!c) return;
   document.getElementById('cont-empresa').value = c.credor || '';
+  // Processo com varios credores: refaz a soma so com os empenhos deste fornecedor
+  aplicarEmpenhosContrato();
 }
+
+// ── EMPENHOS DO NUCLEO FINANCEIRO VINCULADOS AO CONTRATO ──
+function normTxt(s) {
+  return (s||'').toString().normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+}
+
+// Retorna todos os empenhos (nao anulados) lancados no Financeiro para o
+// processo SIGA. Se o processo tiver mais de um credor, considera apenas
+// os empenhos do fornecedor deste contrato.
+function empenhosDoContrato(siga, empresa) {
+  if (!siga || typeof EMPENHOS_FIN==='undefined') return [];
+  var lista = EMPENHOS_FIN.filter(function(e){ return e.processo_siga===siga && e.situacao!=='anulado'; });
+  var proc = processos.find(function(p){ return p.siga===siga; });
+  if (proc && credoresDoProcesso(proc.id).length > 1) {
+    var emp = normTxt(empresa);
+    if (!emp) return [];
+    lista = lista.filter(function(e){ return normTxt(e.credor)===emp; });
+  }
+  return lista.slice().sort(function(a,b){ return (a.data_empenho||'').localeCompare(b.data_empenho||''); });
+}
+
+// Mostra no formulario a lista de empenhos do processo e o total.
+// Se 'aplicar' for true, preenche os campos Nota de empenho e Valor total.
+function renderEmpenhosContrato(aplicar) {
+  var box = document.getElementById('cont-empenhos-vinc');
+  var siga = document.getElementById('cont-siga').value;
+  var empresa = document.getElementById('cont-empresa').value;
+  var lista = empenhosDoContrato(siga, empresa);
+  var total = lista.reduce(function(s,e){ return s+parseFloat(e.valor||0); }, 0);
+
+  if (aplicar && lista.length) {
+    document.getElementById('cont-empenho').value = lista.map(function(e){ return e.numero; }).join(', ');
+    document.getElementById('cont-valor').value = total.toFixed(2);
+  }
+  if (!box) return;
+  if (!siga) { box.style.display='none'; box.innerHTML=''; return; }
+
+  box.style.display = 'block';
+  if (!lista.length) {
+    var proc = processos.find(function(p){ return p.siga===siga; });
+    var multi = proc && credoresDoProcesso(proc.id).length > 1;
+    box.innerHTML = '<div style="background:#fef3c7;color:#92400e;border-radius:8px;padding:10px 12px;font-size:12px">'+
+      '<i class="ti ti-alert-triangle"></i> '+
+      (multi && !normTxt(empresa) ? 'Selecione o fornecedor específico para buscar os empenhos dele no Núcleo Financeiro.'
+                                  : 'Nenhuma nota de empenho foi lançada no Núcleo Financeiro para este processo'+(multi?' e fornecedor':'')+'.')+
+      '</div>';
+    return;
+  }
+
+  var valorAtual = parseFloat(document.getElementById('cont-valor').value)||0;
+  var difere = Math.abs(valorAtual - total) > 0.005;
+  box.innerHTML = '<div style="background:#f0f9f4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px">'+
+    '<div style="font-size:11px;font-weight:700;color:#0a6640;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">'+
+      '<i class="ti ti-link"></i> Empenhos do Núcleo Financeiro ('+lista.length+')</div>'+
+    lista.map(function(e){
+      return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:3px 0;border-bottom:1px dashed #d1fae5">'+
+        '<span><strong>'+(e.numero||'—')+'</strong> · '+fmtDataBR(e.data_empenho)+(e.tipo_empenho?' · '+e.tipo_empenho:'')+'</span>'+
+        '<span style="font-weight:600">'+fmtMoeda(e.valor)+'</span></div>';
+    }).join('')+
+    '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#0a6640;margin-top:6px">'+
+      '<span>Total empenhado</span><span>'+fmtMoeda(total)+'</span></div>'+
+    (difere ? '<div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#b45309">'+
+        '<span><i class="ti ti-info-circle"></i> O valor do contrato ('+fmtMoeda(valorAtual)+') está diferente do total empenhado.</span>'+
+        '<button type="button" onclick="aplicarEmpenhosContrato()" style="font-size:11px;background:#0a6640;color:#fff;border:none;border-radius:5px;padding:4px 10px;cursor:pointer;white-space:nowrap">Usar total empenhado</button>'+
+      '</div>' : '')+
+  '</div>';
+}
+
+function aplicarEmpenhosContrato() { renderEmpenhosContrato(true); }
 
 function popularSelectSIGAContrato() {
   var sel = document.getElementById('cont-siga');
@@ -4234,6 +4306,7 @@ async function abrirModalContrato(id) {
       aditivosTemp = c.aditivos ? JSON.parse(JSON.stringify(c.aditivos)) : [];
       atualizarInfoProcessoContrato();
       popularCredorEspecificoContrato(c.empresa);
+      renderEmpenhosContrato(false);
     }
   } else {
     ['cont-numero','cont-empresa','cont-empenho','cont-valor','cont-pub',
@@ -4248,6 +4321,7 @@ async function abrirModalContrato(id) {
     document.getElementById('cont-siga').value='';
     atualizarInfoProcessoContrato();
     popularCredorEspecificoContrato();
+    renderEmpenhosContrato(false);
   }
 
   toggleServicoContinuo();
@@ -4336,7 +4410,7 @@ function verDetalheContrato(id) {
       det('Status', '<span style="background:'+sit.bg+';color:'+sit.cor+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">'+CONT_STATUS_LABELS[c.status]+'</span>')+
       det('Tipo', (c.tipo==='servico'?'Serviço':'Aquisição')+(c.continuo==='sim'?' · Contínuo':''))+
       det('Valor total', fmtMoeda(c.valor))+
-      det('Nota de empenho', c.empenho||'—')+
+      det('Nota(s) de empenho', c.empenho||'—')+
       det('Publicação', fmtDataBR(c.pub_data))+
       det('Vigência', fmtDataBR(c.vigencia_inicio)+' → '+fmtDataBR(c.vigencia_fim))+
       det('Processo SIGA', c.processo_siga||'—')+
@@ -4355,6 +4429,20 @@ function verDetalheContrato(id) {
         '<div><div style="font-size:10px;color:#888">Contato</div><strong>'+(c.fiscal_tel||'—')+'</strong></div>'+
       '</div>'+
     '</div>';
+
+  // Empenhos lancados no Nucleo Financeiro para este processo
+  var empsVinc = empenhosDoContrato(c.processo_siga, c.empresa);
+  if (empsVinc.length) {
+    var totEmp = empsVinc.reduce(function(s,e){ return s+parseFloat(e.valor||0); }, 0);
+    html += '<div style="background:#f0f9f4;border-radius:8px;padding:12px 14px;margin-bottom:12px">'+
+      '<div style="font-size:11px;font-weight:700;color:#0a6640;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Empenhos no Núcleo Financeiro ('+empsVinc.length+')</div>'+
+      empsVinc.map(function(e){
+        return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed #d1fae5">'+
+          '<span><strong>'+(e.numero||'—')+'</strong> · '+fmtDataBR(e.data_empenho)+'</span><span>'+fmtMoeda(e.valor)+'</span></div>';
+      }).join('')+
+      '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#0a6640;margin-top:6px"><span>Total empenhado</span><span>'+fmtMoeda(totEmp)+'</span></div>'+
+    '</div>';
+  }
 
   // Aditivos
   if (c.aditivos && c.aditivos.length) {
