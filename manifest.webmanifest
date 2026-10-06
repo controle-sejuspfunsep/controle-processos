@@ -1,7 +1,7 @@
 {
-  "name": "Controle de Processos SEJUSP/FUNSEP",
-  "short_name": "Controle de Processos SEJUSP/FUNSEP",
-  "description": "Controle de processos, empenhos, contratos e pagamentos da SEJUSP/FUNSEP",
+  "name": "SEJUSP",
+  "short_name": "SEJUSP",
+  "description": "Controle de Processos SEJUSP/FUNSEP — processos, empenhos, contratos e pagamentos",
   "lang": "pt-BR",
   "id": "/",
   "start_url": "/",
