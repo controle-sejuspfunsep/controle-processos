@@ -344,7 +344,7 @@ tr:hover td{background:#f8fafc}
           </div>
         </div>
         <div class="filter-bar">
-          <input type="text" placeholder="Buscar por objeto, ofício, SIGA..." id="filter-search" oninput="renderTable()"/>
+          <input type="text" placeholder="Buscar por objeto, ofício, SIGA/PRODOC..." id="filter-search" oninput="renderTable()"/>
           <select id="filter-ano" onchange="renderTable()"></select>
           <select id="filter-orgao" onchange="renderTable()">
             <option value="">Todos os órgãos</option>
@@ -365,7 +365,7 @@ tr:hover td{background:#f8fafc}
             <table>
               <thead>
                 <tr>
-                  <th>SIGA</th><th>PRODOC</th><th>Objeto</th><th>Órgão</th>
+                  <th>SIGA / PRODOC</th><th>PRODOC</th><th>Objeto</th><th>Órgão</th>
                   <th>Tipo</th><th>Status</th><th>Ações</th>
                 </tr>
               </thead>
@@ -392,9 +392,9 @@ tr:hover td{background:#f8fafc}
             </div>
             <div class="form-group"><label>Número do Ofício de Autorização</label><input type="text" id="f-oficio" placeholder="Ex: Ofício nº 123/2024"/></div>
             <div class="form-group"><label>Data do Ofício</label><input type="date" id="f-data-oficio"/></div>
-            <div class="form-group"><label>Número do Processo SIGA</label><input type="text" id="f-siga" placeholder="Ex: 2024.00123"/></div>
+            <div class="form-group"><label>Nº SIGA / PRODOC</label><input type="text" id="f-siga" placeholder="Ex: 00051/FUNSEP/2026 — sem SIGA, informe o PRODOC"/></div>
             <div class="form-group full" style="font-size:11px;color:#888;padding-top:4px">
-              <i class="ti ti-info-circle"></i> O Nº PRODOC é cadastrado depois, no Processo de Pagamento (Núcleo Administrativo) — lá, o processo de pagamento é vinculado a este processo pelo Nº SIGA.
+              <i class="ti ti-info-circle"></i> O Nº PRODOC é cadastrado depois, no Processo de Pagamento (Núcleo Administrativo) — lá, o processo de pagamento é vinculado a este processo pelo Nº SIGA (ou pelo PRODOC, nos processos que não têm SIGA).
             </div>
             <div class="form-group"><label>Ano de exercício</label>
               <select id="f-ano-exercicio">
@@ -783,7 +783,7 @@ tr:hover td{background:#f8fafc}
             <div class="table-wrap">
               <table>
                 <thead><tr>
-                  <th>PRODOC</th><th>Objeto</th><th>Credor</th><th>Tipo</th><th>Processo (SIGA)</th><th>Órgão</th>
+                  <th>PRODOC</th><th>Objeto</th><th>Credor</th><th>Tipo</th><th>Processo (SIGA / PRODOC)</th><th>Órgão</th>
                   <th style="text-align:right">Valor</th><th>Data</th><th>Status</th><th></th>
                 </tr></thead>
                 <tbody id="tb-pagamentos"></tbody>
@@ -1056,7 +1056,7 @@ tr:hover td{background:#f8fafc}
             <div class="sec-label" style="margin-bottom:10px">Processo vinculado</div>
             <div style="margin-bottom:14px">
               <div class="form-group full">
-                <label>Processo SIGA vinculado</label>
+                <label>Processo vinculado (SIGA / PRODOC)</label>
                 <select class="form-input" id="cont-siga" onchange="preencherCamposContrato()">
                   <option value="">Selecionar processo...</option>
                 </select>
@@ -1442,10 +1442,10 @@ tr:hover td{background:#f8fafc}
             <input type="hidden" id="pagamento-edit-id">
             <input type="hidden" id="pag-processo-id">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div class="form-group full"><label>Processo vinculado (Nº SIGA)</label>
+              <div class="form-group full"><label>Processo vinculado (SIGA / PRODOC)</label>
                 <select class="form-input" id="pag-processo-select" onchange="preencherDadosDoProcesso()">
                   <option value="">Selecione o processo já cadastrado...</option>
-                  <option value="nao_aplicavel">Não aplicável (não há processo SIGA a vincular)</option>
+                  <option value="nao_aplicavel">Não aplicável (sem processo a vincular)</option>
                 </select>
                 <div id="pag-processo-confirmacao" style="font-size:11px;margin-top:4px;color:#888">Selecione um processo para vincular a este pagamento.</div>
               </div>
@@ -2662,7 +2662,7 @@ function exportarExcel() {
   var dados = lista.map(function(p) {
     return {
       'Órgão': p.orgao||'',
-      'Nº SIGA': p.siga||'',
+      'Nº SIGA / PRODOC': p.siga||'',
       'Nº PRODOC': p.prodoc||'',
       'Objeto': p.objeto||'',
       'Tipo': p.tipo||'',
@@ -2780,7 +2780,7 @@ function exportarPDF() {
       '<thead><tr>'+
         '<th style="width:30px">#</th>'+
         '<th style="width:70px">Órgão</th>'+
-        '<th style="width:130px">Nº SIGA</th>'+
+        '<th style="width:130px">SIGA / PRODOC</th>'+
         '<th>Objeto</th>'+
         '<th style="width:120px">Licitação</th>'+
         '<th style="width:100px">Status</th>'+
@@ -2874,7 +2874,7 @@ async function exportarRelatorioFUNSEPExcel() {
       var d = dadosDerivadosProcesso(p);
       return {
         'Unidade Gestora': p.orgao||'',
-        'Nº Processo SIGA': p.siga||'',
+        'Nº SIGA / PRODOC': p.siga||'',
         'Data': fmtDataBR(p.data_oficio),
         'Licitação': p.licitacao||'',
         'Processo PRODOC': d.prodoc||'',
@@ -2938,7 +2938,7 @@ async function exportarRelatorioFUNSEPPDF() {
         g.ano+' — '+g.natureza+' <span style="font-weight:400;font-size:11px">('+g.itens.length+' processo(s) · '+fmtMoeda(valorTotalGrupo)+')</span>'+
       '</div>'+
       '<table><thead><tr>'+
-        '<th>UG</th><th>Nº SIGA</th><th>Data</th><th>Licitação</th><th>PRODOC</th><th>Contratada</th><th>Objeto</th>'+
+        '<th>UG</th><th>SIGA / PRODOC</th><th>Data</th><th>Licitação</th><th>PRODOC</th><th>Contratada</th><th>Objeto</th>'+
         '<th>Marca</th><th>Quant.</th><th>Órgão a Atender</th><th>Valor</th><th>Situação</th><th>Fiscais</th>'+
       '</tr></thead><tbody>'+linhas+'</tbody></table>'+
     '</div>';
@@ -3574,7 +3574,7 @@ async function abrirModalEmpenho(id) {
   // Popular select de processos
   var selProc = document.getElementById('emp-fin-processo');
   selProc.innerHTML = '<option value="">Selecionar processo...</option>'+
-                       '<option value="nao_aplicavel">Não aplicável (não há processo SIGA a vincular)</option>';
+                       '<option value="nao_aplicavel">Não aplicável (sem processo a vincular)</option>';
   processos.forEach(function(p){ selProc.innerHTML += '<option value="'+p.siga+'">'+(p.siga||'Sem SIGA')+' — '+p.objeto.substring(0,50)+'</option>'; });
 
   // Popular select de contas
@@ -4413,7 +4413,7 @@ function verDetalheContrato(id) {
       det('Nota(s) de empenho', c.empenho||'—')+
       det('Publicação', fmtDataBR(c.pub_data))+
       det('Vigência', fmtDataBR(c.vigencia_inicio)+' → '+fmtDataBR(c.vigencia_fim))+
-      det('Processo SIGA', c.processo_siga||'—')+
+      det('Processo (SIGA / PRODOC)', c.processo_siga||'—')+
       det('PRODOC', c.prodoc||'—')+
       det('Portaria fiscalização', c.portaria||'—')+
     '</div>'+
@@ -4503,7 +4503,7 @@ function exportarContratosExcel() {
       'Início vigência': fmtDataBR(c.vigencia_inicio),
       'Fim vigência': fmtDataBR(c.vigencia_fim),
       'Status': CONT_STATUS_LABELS[c.status]||c.status,
-      'Processo SIGA': c.processo_siga||'',
+      'Processo (SIGA / PRODOC)': c.processo_siga||'',
       'PRODOC': c.prodoc||'',
       'Portaria fiscalização': c.portaria||'',
       'Fiscal': c.fiscal_nome||'',
@@ -5760,7 +5760,7 @@ async function popularSelectProcessoPagamento(valorSelecionadoId) {
   if (!sel) return;
   await carregarProcessos();
   sel.innerHTML = '<option value="">Selecione o processo já cadastrado...</option>'+
-                   '<option value="nao_aplicavel">Não aplicável (não há processo SIGA a vincular)</option>';
+                   '<option value="nao_aplicavel">Não aplicável (sem processo a vincular)</option>';
   processos.slice().sort(function(a,b){ return (a.siga||'').localeCompare(b.siga||''); }).forEach(function(p){
     var rotulo = (p.siga||'sem SIGA') + ' — ' + (p.objeto||'').substring(0,60) + ' ('+(p.orgao||'')+')';
     sel.innerHTML += '<option value="'+p.id+'">'+rotulo+'</option>';
