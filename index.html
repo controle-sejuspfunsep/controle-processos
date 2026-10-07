@@ -628,6 +628,9 @@ tr:hover td{background:#f8fafc}
           </div>
         </div>
 
+        <!-- Seletor de Unidade Gestora -->
+        <div id="cont-ug-seletor" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px"></div>
+
         <!-- Cards métricas -->
         <div class="metrics" id="cont-metrics" style="grid-template-columns:repeat(5,1fr);margin-bottom:18px"></div>
 
@@ -638,7 +641,7 @@ tr:hover td{background:#f8fafc}
             <canvas id="cont-chart-status" style="max-height:180px"></canvas>
           </div>
           <div class="card" style="padding:16px">
-            <div class="sec-label">Por órgão</div>
+            <div class="sec-label">Valor contratado por tipo</div>
             <canvas id="cont-chart-orgao" style="max-height:180px"></canvas>
           </div>
           <div class="card" style="padding:16px">
@@ -658,7 +661,7 @@ tr:hover td{background:#f8fafc}
         <!-- Filtros -->
         <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
           <input type="text" id="cont-busca" placeholder="Buscar contrato, empresa, objeto..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:260px" oninput="renderTabelaContratos()">
-          <select id="cont-filtro-orgao" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaContratos()">
+          <select id="cont-filtro-orgao" style="display:none;padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaContratos()">
             <option value="">Todos os órgãos</option>
             <option>SEJUSP</option><option>FUNSEP</option>
           </select>
@@ -4277,11 +4280,43 @@ function verificarAlertasContratos() {
   });
 }
 
+// ── UNIDADE GESTORA ──
+var CONT_UG = 'FUNSEP';
+function contsUG() { return CONTRATOS.filter(function(c){ return (c.orgao||'FUNSEP')===CONT_UG; }); }
+
+function renderSeletorUGContratos() {
+  var el = document.getElementById('cont-ug-seletor'); if (!el) return;
+  var ugs = [
+    {id:'FUNSEP', desc:'Fundo Estadual de Segurança Pública', cor:'#065f46', bg:'#d1fae5'},
+    {id:'SEJUSP', desc:'Secretaria de Estado da Justiça e Segurança Pública', cor:'#1e40af', bg:'#dbeafe'}
+  ];
+  el.innerHTML = ugs.map(function(u){
+    var lista = CONTRATOS.filter(function(c){ return (c.orgao||'FUNSEP')===u.id; });
+    var vig = lista.filter(function(c){ return c.status==='vigente'||c.status==='em_renovacao'; });
+    var val = vig.reduce(function(s,c){ return s+parseFloat(c.valor||0); },0);
+    var ativo = CONT_UG===u.id;
+    return '<div onclick="contUG(\''+u.id+'\')" style="cursor:pointer;border-radius:12px;padding:14px 16px;border:2px solid '+(ativo?u.cor:'#e5e7eb')+';background:'+(ativo?u.bg:'#fff')+';display:flex;justify-content:space-between;align-items:center;gap:10px">'+
+      '<div><div style="font-size:15px;font-weight:800;color:'+u.cor+'"><i class="ti ti-file-certificate"></i> '+u.id+'</div>'+
+      '<div style="font-size:11px;color:#666">'+u.desc+'</div></div>'+
+      '<div style="text-align:right;white-space:nowrap"><div style="font-weight:700;color:#1a3a5c">'+fmtMoeda(val)+'</div>'+
+      '<div style="font-size:11px;color:#888">'+lista.length+' contrato(s) · '+vig.length+' em vigor</div></div></div>';
+  }).join('');
+}
+
+function contUG(ug) {
+  CONT_UG = ug;
+  renderSeletorUGContratos();
+  renderMetricsContratos();
+  renderTabelaContratos();
+  if (typeof renderDashboardContratos === 'function') renderDashboardContratos();
+}
+
 // ── RENDER PRINCIPAL ──
 async function renderContratos() {
   await carregarContratos();
   await carregarFinanceiro();
   popularFiltroAnoContratos();
+  renderSeletorUGContratos();
   renderMetricsContratos();
   renderTabelaContratos();
   verificarAlertasContratos();
@@ -4298,11 +4333,11 @@ function popularFiltroAnoContratos() {
 }
 
 function renderMetricsContratos() {
-  var total    = CONTRATOS.length;
-  var vigentes = CONTRATOS.filter(function(c){return c.status==='vigente';}).length;
-  var renovacao= CONTRATOS.filter(function(c){return c.status==='em_renovacao';}).length;
-  var encerr   = CONTRATOS.filter(function(c){return c.status==='encerrado';}).length;
-  var valorTotal= CONTRATOS.filter(function(c){return c.status==='vigente'||c.status==='em_renovacao';})
+  var total    = contsUG().length;
+  var vigentes = contsUG().filter(function(c){return c.status==='vigente';}).length;
+  var renovacao= contsUG().filter(function(c){return c.status==='em_renovacao';}).length;
+  var encerr   = contsUG().filter(function(c){return c.status==='encerrado';}).length;
+  var valorTotal= contsUG().filter(function(c){return c.status==='vigente'||c.status==='em_renovacao';})
                             .reduce(function(s,c){return s+parseFloat(c.valor||0);},0);
   var el = document.getElementById('cont-metrics');
   if (!el) return;
@@ -4321,7 +4356,7 @@ function renderTabelaContratos() {
   var status  = (document.getElementById('cont-filtro-status')||{value:''}).value;
   var ano     = (document.getElementById('cont-filtro-ano')||{value:''}).value;
 
-  var lista = CONTRATOS.filter(function(c){
+  var lista = contsUG().filter(function(c){
     var mb = !busca || (c.numero||'').toLowerCase().indexOf(busca)>-1 ||
              (c.empresa||'').toLowerCase().indexOf(busca)>-1 ||
              (c.objeto||'').toLowerCase().indexOf(busca)>-1;
@@ -4644,7 +4679,7 @@ async function abrirModalContrato(id) {
      'cont-fiscal-orgao','cont-fiscal-tel','cont-obs'].forEach(function(f){
       var el=document.getElementById(f); if(el) el.value='';
     });
-    document.getElementById('cont-orgao').value='';
+    document.getElementById('cont-orgao').value=CONT_UG;
     document.getElementById('cont-tipo').value='';
     document.getElementById('cont-continuo').value='nao';
     document.getElementById('cont-status').value='vigente';
@@ -4811,7 +4846,7 @@ function getContratosExportar() {
   var orgao  = (document.getElementById('cont-filtro-orgao')||{value:''}).value;
   var status = (document.getElementById('cont-filtro-status')||{value:''}).value;
   var ano    = (document.getElementById('cont-filtro-ano')||{value:''}).value;
-  return CONTRATOS.filter(function(c){
+  return contsUG().filter(function(c){
     return (!orgao||c.orgao===orgao)&&(!status||c.status===status)&&(!ano||(c.pub_data||'').startsWith(ano));
   });
 }
@@ -5001,12 +5036,12 @@ function renderDashboardFinanceiro() {
 function renderDashboardContratos() {
   // Gráfico status (rosca)
   var ctxS = document.getElementById('cont-chart-status');
-  if (ctxS && CONTRATOS.length) {
+  if (ctxS) {
     if (chartContStatus) chartContStatus.destroy();
-    var vig  = CONTRATOS.filter(function(c){return c.status==='vigente';}).length;
-    var renov= CONTRATOS.filter(function(c){return c.status==='em_renovacao';}).length;
-    var enc  = CONTRATOS.filter(function(c){return c.status==='encerrado';}).length;
-    var resc = CONTRATOS.filter(function(c){return c.status==='rescindido';}).length;
+    var vig  = contsUG().filter(function(c){return c.status==='vigente';}).length;
+    var renov= contsUG().filter(function(c){return c.status==='em_renovacao';}).length;
+    var enc  = contsUG().filter(function(c){return c.status==='encerrado';}).length;
+    var resc = contsUG().filter(function(c){return c.status==='rescindido';}).length;
     chartContStatus = new Chart(ctxS, {
       type:'doughnut',
       data:{ labels:['Vigente','Em renovação','Encerrado','Rescindido'],
@@ -5018,26 +5053,26 @@ function renderDashboardContratos() {
 
   // Gráfico por órgão (barras)
   var ctxO = document.getElementById('cont-chart-orgao');
-  if (ctxO && CONTRATOS.length) {
+  if (ctxO) {
     if (chartContOrgao) chartContOrgao.destroy();
-    var orgaos = {};
-    CONTRATOS.forEach(function(c){ orgaos[c.orgao]=(orgaos[c.orgao]||0)+1; });
+    var porTipo = {'Serviço':0, 'Aquisição':0};
+    contsUG().forEach(function(c){ var k = c.tipo==='servico'?'Serviço':'Aquisição'; porTipo[k] += parseFloat(c.valor||0); });
     chartContOrgao = new Chart(ctxO, {
       type:'bar',
-      data:{ labels:Object.keys(orgaos),
-        datasets:[{label:'Contratos', data:Object.values(orgaos),
-          backgroundColor:['#1a3a5c','#0a6640','#7c3aed'], borderRadius:6}]
+      data:{ labels:Object.keys(porTipo),
+        datasets:[{label:'Valor contratado', data:Object.values(porTipo),
+          backgroundColor:['#3b82f6','#f59e0b'], borderRadius:6}]
       },
-      options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'#f0f0f0'}}}}
+      options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{callback:function(v){return 'R$'+Number(v/1000).toFixed(0)+'k';}}}}}
     });
   }
 
   // Gráfico por tipo (pizza)
   var ctxT = document.getElementById('cont-chart-tipo');
-  if (ctxT && CONTRATOS.length) {
+  if (ctxT) {
     if (chartContTipo) chartContTipo.destroy();
-    var serv = CONTRATOS.filter(function(c){return c.tipo==='servico';}).length;
-    var aqui = CONTRATOS.filter(function(c){return c.tipo==='aquisicao';}).length;
+    var serv = contsUG().filter(function(c){return c.tipo==='servico';}).length;
+    var aqui = contsUG().filter(function(c){return c.tipo==='aquisicao';}).length;
     chartContTipo = new Chart(ctxT, {
       type:'pie',
       data:{ labels:['Serviço','Aquisição'],
@@ -5050,7 +5085,7 @@ function renderDashboardContratos() {
   // Vencimentos próximos (30 dias)
   var hoje = new Date(); hoje.setHours(0,0,0,0);
   var em30 = new Date(hoje.getTime()+30*864e5);
-  var venc30 = CONTRATOS.filter(function(c){
+  var venc30 = contsUG().filter(function(c){
     if (!c.vigencia_fim||c.status==='encerrado'||c.status==='rescindido') return false;
     var d = new Date(c.vigencia_fim+'T12:00:00');
     return d >= hoje && d <= em30;
