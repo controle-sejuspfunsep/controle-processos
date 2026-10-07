@@ -532,7 +532,10 @@ tr:hover td{background:#f8fafc}
       <div id="page-financeiro" class="page">
         <div class="section-header">
           <span class="section-title">🏦 Núcleo Financeiro</span>
-          <button class="btn-primary" id="fin-btn-add" onclick="abrirModalEmpenho()"><i class="ti ti-plus"></i> Novo Empenho</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn-secondary" onclick="abrirRelatoriosFin()"><i class="ti ti-report-analytics"></i> Relatórios</button>
+            <button class="btn-primary" id="fin-btn-add" onclick="abrirModalEmpenho()"><i class="ti ti-plus"></i> Novo Empenho</button>
+          </div>
         </div>
 
         <!-- Seletor de Unidade Gestora -->
@@ -1032,9 +1035,11 @@ tr:hover td{background:#f8fafc}
                   <div><div style="color:#888;font-size:10px;font-weight:700">SALDO DISPONÍVEL</div><div id="emp-info-saldo" style="font-weight:700;color:#0a6640"></div></div>
                 </div>
               </div>
-              <div class="form-group"><label>Valor do empenho (R$)</label><input type="number" step="0.01" id="emp-fin-valor" class="form-input" placeholder="0,00" oninput="validarSaldoEmpenho()"></div>
+              <div class="form-group"><label>Valor do empenho (R$)</label><input type="number" step="0.01" id="emp-fin-valor" class="form-input" placeholder="0,00" oninput="validarSaldoEmpenho();syncLiqEmpenho('liq')"></div>
+              <div class="form-group"><label>Valor liquidado (R$)</label><input type="number" step="0.01" id="emp-fin-liq" class="form-input" placeholder="0,00" oninput="syncLiqEmpenho('liq')">
+                <div id="emp-fin-liq-info" style="font-size:11px;color:#b45309;margin-top:3px"></div></div>
               <div class="form-group"><label>Situação</label>
-                <select id="emp-fin-situacao" class="form-input">
+                <select id="emp-fin-situacao" class="form-input" onchange="syncLiqEmpenho('situacao')">
                   <option value="ativo">Ativo</option>
                   <option value="anulado">Anulado</option>
                   <option value="liquidado">Liquidado</option>
@@ -1981,6 +1986,39 @@ tr:hover td{background:#f8fafc}
           <div class="modal-footer">
             <button class="btn-secondary" onclick="fecharModal('m-ha-pag')">Cancelar</button>
             <button class="btn-primary" onclick="salvarHaPag()"><i class="ti ti-device-floppy"></i> Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL RELATÓRIOS DO NÚCLEO FINANCEIRO -->
+      <div class="modal-overlay" id="m-fin-rel">
+        <div class="modal-box" style="width:600px">
+          <div class="modal-header">
+            <div><div class="modal-title">Relatórios do Núcleo Financeiro</div>
+            <div class="modal-sub">Sempre separados por unidade gestora (FUNSEP / SEJUSP)</div></div>
+            <button class="modal-close" onclick="fecharModal('m-fin-rel')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <div class="sec-label" style="margin-bottom:8px">Tipo de relatório</div>
+            <div id="frel-tipos" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group full"><label>Unidade gestora</label>
+                <select id="frel-ug" class="form-input">
+                  <option value="ambas">FUNSEP e SEJUSP (em seções separadas)</option>
+                  <option value="FUNSEP">Somente FUNSEP</option>
+                  <option value="SEJUSP">Somente SEJUSP</option>
+                </select></div>
+              <div class="form-group frel-emp"><label>Empenhos de (data)</label><input type="date" id="frel-de" class="form-input"></div>
+              <div class="form-group frel-emp"><label>até</label><input type="date" id="frel-ate" class="form-input"></div>
+              <div class="form-group full frel-conta"><label>Ano de repasse</label>
+                <select id="frel-ano" class="form-input"><option value="">Todos</option></select></div>
+            </div>
+            <div id="frel-aviso" style="font-size:11px;color:#888;margin-top:4px"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-fin-rel')">Cancelar</button>
+            <button class="btn-secondary" onclick="gerarRelatorioFin('excel')"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+            <button class="btn-primary" onclick="gerarRelatorioFin('pdf')"><i class="ti ti-file-type-pdf"></i> PDF / Imprimir</button>
           </div>
         </div>
       </div>
@@ -3817,7 +3855,9 @@ function renderEmpenhos(filtroContaId) {
       '<td style="font-size:12px">'+(conta?'ND '+conta.nd:'—')+'</td>'+
       '<td style="text-align:right;font-weight:700;color:#c0392b">'+fmtMoeda(e.valor)+'</td>'+
       '<td style="font-size:12px;color:#888">'+(e.data_empenho?new Date(e.data_empenho+'T12:00:00').toLocaleDateString('pt-BR'):'—')+'</td>'+
-      '<td><span class="tag" style="background:'+(sitBg[e.situacao]||'#f3f4f6')+';color:'+(sitCor[e.situacao]||'#374151')+'">'+(e.situacao||'—')+'</span></td>'+
+      '<td>'+(statusLiqEmpenho(e)==='parcial'
+          ? '<span class="tag" style="background:#fef3c7;color:#92400e" title="Liquidado '+fmtMoeda(liqEmpenho(e))+' de '+fmtMoeda(e.valor)+'">liquidado parcial</span><div style="font-size:10px;color:#92400e;margin-top:2px">'+fmtMoeda(liqEmpenho(e))+'</div>'
+          : '<span class="tag" style="background:'+(sitBg[e.situacao]||'#f3f4f6')+';color:'+(sitCor[e.situacao]||'#374151')+'">'+(e.situacao||'—')+'</span>')+'</td>'+
       '<td style="text-align:right;white-space:nowrap">'+
         '<button class="btn-icon" onclick="editarEmpenhoFin(\''+e.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
         '<button class="btn-icon" onclick="excluirEmpenhoFin(\''+e.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
@@ -3931,6 +3971,8 @@ async function abrirModalEmpenho(id) {
       document.getElementById('emp-fin-conta').value    = e.conta_id||'';
       document.getElementById('emp-fin-valor').value    = e.valor||'';
       document.getElementById('emp-fin-situacao').value = e.situacao||'ativo';
+      document.getElementById('emp-fin-liq').value      = liqEmpenho(e)||'';
+      syncLiqEmpenho('situacao');
       document.getElementById('emp-fin-obs').value      = e.obs||'';
       atualizarCamposUG();
       atualizarInfoConta();
@@ -3946,6 +3988,8 @@ async function abrirModalEmpenho(id) {
     document.getElementById('emp-fin-conta').value    = '';
     document.getElementById('emp-fin-valor').value    = '';
     document.getElementById('emp-fin-situacao').value = 'ativo';
+    document.getElementById('emp-fin-liq').value      = '';
+    document.getElementById('emp-fin-liq-info').textContent = '';
     document.getElementById('emp-info-conta').style.display='none';
     document.getElementById('emp-alerta-saldo').style.display='none';
     atualizarCamposUG();
@@ -4120,7 +4164,9 @@ async function salvarEmpenhoFin() {
   }
 
   var sigaParaSalvar = siga === 'nao_aplicavel' ? 'Não aplicável' : (siga||null);
-  var payload = { numero, data_empenho:data, ug, credor, tipo_empenho:tipo, conta_id:contaId||null, valor, situacao:sit, obs, processo_siga:sigaParaSalvar };
+  var liqV = sit==='anulado' ? 0 : Math.min(parseFloat(document.getElementById('emp-fin-liq').value)||0, valor);
+  if (sit==='liquidado' && !liqV) liqV = valor;
+  var payload = { numero, data_empenho:data, ug, credor, tipo_empenho:tipo, conta_id:contaId||null, valor, valor_liquidado:liqV, situacao:sit, obs, processo_siga:sigaParaSalvar };
 
   try {
     if (editId) {
@@ -7520,6 +7566,256 @@ async function salvarHaTurma() {
     renderDetalheCurso();
     showToast(turma+' lançada! Edite cada linha para informar CPF, empenho e pagamento.');
   } catch(e) { showToast('Erro ao lançar: '+(e.message||e),'error'); console.error(e); }
+}
+
+
+// ════════════════════════════════════════════════
+// NÚCLEO FINANCEIRO — LIQUIDAÇÃO E RELATÓRIOS
+// ════════════════════════════════════════════════
+function liqEmpenho(e) {
+  if (e.situacao==='anulado') return 0;
+  var v = parseFloat(e.valor||0), l = parseFloat(e.valor_liquidado||0);
+  if (e.situacao==='liquidado' && !l) l = v;
+  return Math.min(l, v);
+}
+function statusLiqEmpenho(e) {
+  if (e.situacao==='anulado') return 'anulado';
+  var v = parseFloat(e.valor||0), l = liqEmpenho(e);
+  if (v>0 && l >= v-0.005) return 'integral';
+  if (l>0) return 'parcial';
+  return 'a_liquidar';
+}
+var LIQ_LABEL = { integral:'Liquidado', parcial:'Liquidado parcial', a_liquidar:'A liquidar', anulado:'Anulado' };
+
+// Sincroniza "valor liquidado" e "situação" no formulário do empenho
+function syncLiqEmpenho(origem) {
+  var v = parseFloat(document.getElementById('emp-fin-valor').value)||0;
+  var elL = document.getElementById('emp-fin-liq'), elS = document.getElementById('emp-fin-situacao');
+  if (origem==='situacao') {
+    if (elS.value==='liquidado' && !(parseFloat(elL.value)>0)) elL.value = v || '';
+    if (elS.value==='anulado') elL.value = 0;
+  } else {
+    var l = parseFloat(elL.value)||0;
+    if (v>0 && l >= v-0.005) elS.value = 'liquidado';
+    else if (elS.value==='liquidado') elS.value = 'ativo';
+  }
+  var info = document.getElementById('emp-fin-liq-info');
+  if (info) {
+    var l2 = parseFloat(elL.value)||0;
+    info.textContent = (l2>0 && l2 < v-0.005) ? 'Liquidado parcialmente — falta liquidar '+fmtMoeda(v-l2) : '';
+  }
+}
+
+var FREL_TIPOS = [
+  {id:'saldo_contas', titulo:'Extrato das Contas FUNSEP', desc:'Por ano de repasse, separado em investimento e custeio, com total utilizado e disponível', icon:'ti-building-bank'},
+  {id:'empenhos', titulo:'Empenhos', desc:'Todos os empenhos (exceto anulados) com valor liquidado e a liquidar', icon:'ti-file-invoice'},
+  {id:'liq_integral', titulo:'Empenhos liquidados integralmente', desc:'Valor liquidado igual ao valor empenhado', icon:'ti-circle-check'},
+  {id:'liq_parcial', titulo:'Empenhos liquidados parcialmente', desc:'Parte já liquidada e saldo a liquidar', icon:'ti-progress-check'}
+];
+var FREL_TIPO = 'saldo_contas';
+
+function abrirRelatoriosFin() {
+  var sel = document.getElementById('frel-ano');
+  var anos = {}; CONTAS_FIN.forEach(function(c){ if (c.ano_repasse) anos[c.ano_repasse]=1; });
+  sel.innerHTML = '<option value="">Todos</option>'+Object.keys(anos).sort().map(function(a){return '<option>'+a+'</option>';}).join('');
+  document.getElementById('frel-ug').value = 'ambas';
+  selecionarTipoRelFin(FREL_TIPO);
+  abrirModal('m-fin-rel');
+}
+
+function selecionarTipoRelFin(t) {
+  FREL_TIPO = t;
+  document.getElementById('frel-tipos').innerHTML = FREL_TIPOS.map(function(x){
+    var on = x.id===t;
+    return '<div onclick="selecionarTipoRelFin(\''+x.id+'\')" style="cursor:pointer;border:2px solid '+(on?'#1a3a5c':'#e5e7eb')+';background:'+(on?'#eaf1fb':'#fff')+';border-radius:10px;padding:10px 12px">'+
+      '<div style="font-weight:700;font-size:13px;color:#1a3a5c"><i class="ti '+x.icon+'"></i> '+x.titulo+'</div>'+
+      '<div style="font-size:11px;color:#666;margin-top:2px">'+x.desc+'</div></div>';
+  }).join('');
+  var contas = t==='saldo_contas';
+  document.querySelectorAll('#m-fin-rel .frel-emp').forEach(function(el){ el.style.display = contas?'none':''; });
+  document.querySelectorAll('#m-fin-rel .frel-conta').forEach(function(el){ el.style.display = contas?'':'none'; });
+  var ug = document.getElementById('frel-ug');
+  if (!contas && ug.disabled) ug.value = 'ambas';
+  ug.disabled = contas;
+  if (contas) ug.value = 'FUNSEP';
+  document.getElementById('frel-aviso').textContent = contas
+    ? 'As contas correntes do FSP pertencem ao FUNSEP; a SEJUSP empenha com orçamento próprio e não tem contas cadastradas.'
+    : '';
+}
+
+// Monta os dados do relatório: [{ug, linhas:[...], totais:{...}}]
+function dadosRelatorioFin() {
+  var t = FREL_TIPO;
+  var ugSel = document.getElementById('frel-ug').value;
+  var ugs = t==='saldo_contas' ? ['FUNSEP'] : (ugSel==='ambas' ? ['FUNSEP','SEJUSP'] : [ugSel]);
+  if (t==='saldo_contas') {
+    var ano = document.getElementById('frel-ano').value;
+    var linhas = CONTAS_FIN.filter(function(c){ return !ano || String(c.ano_repasse)===ano; })
+      .sort(function(a,b){ return ((a.ano_repasse==null?9999:a.ano_repasse)-(b.ano_repasse==null?9999:b.ano_repasse)) || String(a.eixo).localeCompare(String(b.eixo)) || String(a.numero).localeCompare(String(b.numero)); })
+      .map(function(c){
+        var emps = EMPENHOS_FIN.filter(function(e){ return e.conta_id===c.id && e.situacao!=='anulado'; });
+        var emp = emps.reduce(function(s,e){return s+parseFloat(e.valor||0);},0);
+        var liq = emps.reduce(function(s,e){return s+liqEmpenho(e);},0);
+        var sc = parseFloat(c.saldo_conta||0);
+        return { conta:c.numero||'—', ano:c.ano_repasse, nd:c.nd, eixo:c.eixo, acao:c.acao||'', ini:parseFloat(c.saldo_inicial||0), saldo:sc, emp:emp, liq:liq, util:sc-emp };
+      });
+    var tot = linhas.reduce(function(s,l){ s.ini+=l.ini; s.saldo+=l.saldo; s.emp+=l.emp; s.liq+=l.liq; s.util+=l.util; return s; }, {ini:0,saldo:0,emp:0,liq:0,util:0});
+    return ugs.map(function(u){ return {ug:u, linhas:linhas, totais:tot}; });
+  }
+  var de = document.getElementById('frel-de').value, ate = document.getElementById('frel-ate').value;
+  return ugs.map(function(u){
+    var linhas = EMPENHOS_FIN.filter(function(e){
+      if (ugEmpenho(e)!==u || e.situacao==='anulado') return false;
+      if (de && (e.data_empenho||'') < de) return false;
+      if (ate && (e.data_empenho||'') > ate) return false;
+      var st = statusLiqEmpenho(e);
+      if (t==='liq_integral') return st==='integral';
+      if (t==='liq_parcial') return st==='parcial';
+      return true;
+    }).sort(function(a,b){ return String(a.data_empenho||'').localeCompare(String(b.data_empenho||'')) || String(a.numero).localeCompare(String(b.numero)); })
+      .map(function(e){
+        var conta = CONTAS_FIN.find(function(c){return c.id===e.conta_id;});
+        var pr = procEmpenho(e);
+        var v = parseFloat(e.valor||0), l = liqEmpenho(e);
+        return { numero:e.numero||'—', data:e.data_empenho, credor:e.credor||'—', processo: pr.prodoc ? 'PRODOC '+pr.prodoc : (pr.siga ? 'SIGA '+pr.siga : '—'),
+          conta: conta ? conta.numero+' ('+conta.eixo+'/'+conta.ano_repasse+')' : '—', valor:v, liq:l, aliq:v-l, sit:LIQ_LABEL[statusLiqEmpenho(e)] };
+      });
+    var tot = linhas.reduce(function(s,l){ s.valor+=l.valor; s.liq+=l.liq; s.aliq+=l.aliq; return s; }, {valor:0,liq:0,aliq:0});
+    return {ug:u, linhas:linhas, totais:tot};
+  });
+}
+
+function gerarRelatorioFin(formato) {
+  if (FREL_TIPO==='saldo_contas') return gerarExtratoContasFin(formato);
+  var tipo = FREL_TIPOS.find(function(x){return x.id===FREL_TIPO;});
+  var secoes = dadosRelatorioFin();
+  var de = document.getElementById('frel-de').value, ate = document.getElementById('frel-ate').value, ano = document.getElementById('frel-ano').value;
+  var filtro = FREL_TIPO==='saldo_contas' ? (ano ? 'Ano de repasse '+ano : 'Todos os anos de repasse')
+             : ((de||ate) ? 'Empenhos de '+(de?fmtDataBR(de):'início')+' a '+(ate?fmtDataBR(ate):'hoje') : 'Todos os períodos');
+  var contas = FREL_TIPO==='saldo_contas';
+  var cab = contas ? ['Conta','Ano','ND','Eixo','Ação','Saldo inicial','Saldo da conta','Empenhado','Liquidado','Saldo a utilizar']
+                   : ['Nº empenho','Data','Credor','Processo','Conta','Valor empenhado','Liquidado','A liquidar','Situação'];
+  var linhaArr = function(l){ return contas
+      ? [l.conta, l.ano, l.nd, l.eixo, l.acao, l.ini, l.saldo, l.emp, l.liq, l.util]
+      : [l.numero, l.data?fmtDataBR(l.data):'—', l.credor, l.processo, l.conta, l.valor, l.liq, l.aliq, l.sit]; };
+  var totArr = function(s){ var t=s.totais; return contas
+      ? ['TOTAL '+s.ug+' ('+s.linhas.length+' contas)','','','','',t.ini,t.saldo,t.emp,t.liq,t.util]
+      : ['TOTAL '+s.ug+' ('+s.linhas.length+' empenhos)','','','','',t.valor,t.liq,t.aliq,'']; };
+  var nomeArq = 'relatorio-'+FREL_TIPO+'-'+new Date().toISOString().slice(0,10);
+
+  if (formato==='excel') {
+    var wb = XLSX.utils.book_new();
+    secoes.forEach(function(s){
+      var rows = [[tipo.titulo+' — '+s.ug], [filtro], [], cab].concat(s.linhas.map(linhaArr)).concat([totArr(s)]);
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = cab.map(function(c,i){ return {wch: i<5 ? 18 : 16}; });
+      XLSX.utils.book_append_sheet(wb, ws, s.ug);
+    });
+    XLSX.writeFile(wb, nomeArq+'.xlsx');
+    showToast('Planilha gerada.');
+    return;
+  }
+
+  var dt = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  var numCols = contas ? [5,6,7,8,9] : [5,6,7];
+  var td = function(v,i,b){ var n = numCols.indexOf(i)>-1; return '<td style="padding:5px 7px;font-size:10px;'+(n?'text-align:right;white-space:nowrap;':'')+(b?'font-weight:700;':'')+'">'+(n?fmtMoeda(v):escDP(v==null?'':v))+'</td>'; };
+  var corpo = secoes.map(function(s){
+    var cor = s.ug==='FUNSEP' ? '#065f46' : '#1e40af';
+    return '<h2 style="font-size:14px;color:'+cor+';border-left:5px solid '+cor+';padding-left:8px;margin:18px 0 8px">'+s.ug+(s.ug==='FUNSEP'?' — Fundo Estadual de Segurança Pública':' — Secretaria de Estado da Justiça e Segurança Pública')+'</h2>'+
+      (s.linhas.length
+        ? '<table><thead><tr>'+cab.map(function(c,i){return '<th style="'+(numCols.indexOf(i)>-1?'text-align:right':'')+'">'+c+'</th>';}).join('')+'</tr></thead><tbody>'+
+          s.linhas.map(function(l,k){ return '<tr style="background:'+(k%2?'#f9fafb':'#fff')+'">'+linhaArr(l).map(function(v,i){return td(v,i,false);}).join('')+'</tr>'; }).join('')+
+          '<tr style="background:#eef2f7">'+totArr(s).map(function(v,i){return td(v,i,true);}).join('')+'</tr></tbody></table>'
+        : '<div style="font-size:12px;color:#888;padding:8px 0">Nenhum registro para esta unidade gestora.</div>');
+  }).join('');
+  var win = window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+tipo.titulo+'</title>'+
+    '<style>body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#222}@media print{@page{size:A4 landscape;margin:10mm}}'+
+    'table{width:100%;border-collapse:collapse}th{background:#1a3a5c;color:#fff;padding:6px 7px;text-align:left;font-size:10px}td{border-bottom:1px solid #eee}</style></head><body>'+
+    '<div style="border-bottom:3px solid #1a3a5c;padding-bottom:10px;margin-bottom:6px">'+
+    '<div style="font-size:10px;color:#666;font-weight:700;letter-spacing:1px;text-transform:uppercase">Estado do Amapá — SEJUSP / FUNSEP — Núcleo Financeiro</div>'+
+    '<div style="font-size:17px;font-weight:700;color:#1a3a5c">'+tipo.titulo+'</div>'+
+    '<div style="font-size:11px;color:#888">'+filtro+' · Emitido em '+dt+'</div></div>'+
+    corpo+'</body></html>');
+  win.document.close();
+  setTimeout(function(){ win.print(); }, 600);
+}
+
+// Extrato das Contas FUNSEP: ano de repasse → investimento (ND 4) / custeio (ND 3)
+function gerarExtratoContasFin(formato) {
+  var linhas = dadosRelatorioFin()[0].linhas;
+  var ano = document.getElementById('frel-ano').value;
+  var filtro = ano ? 'Ano de repasse '+ano : 'Todos os anos de repasse';
+  var GRUPOS = [{nd:'4', nome:'Investimento (ND 4 — equipamentos e material permanente)'}, {nd:'3', nome:'Custeio (ND 3 — serviços e material de consumo)'}];
+  var soma = function(l){ return l.reduce(function(s,x){ s.ini+=x.ini; s.saldo+=x.saldo; s.emp+=x.emp; s.liq+=x.liq; s.util+=x.util; return s; }, {ini:0,saldo:0,emp:0,liq:0,util:0}); };
+  var anos = []; linhas.forEach(function(l){ if (anos.indexOf(l.ano)<0) anos.push(l.ano); });
+  var estrutura = anos.map(function(a){
+    var doAno = linhas.filter(function(l){return l.ano===a;});
+    var grupos = GRUPOS.map(function(g){ var ls = doAno.filter(function(l){return String(l.nd)===g.nd;}); return {nome:g.nome, linhas:ls, tot:soma(ls)}; })
+      .filter(function(g){return g.linhas.length;});
+    var outros = doAno.filter(function(l){ return ['3','4'].indexOf(String(l.nd))<0; });
+    if (outros.length) grupos.push({nome:'Outras naturezas', linhas:outros, tot:soma(outros)});
+    return {ano:a, grupos:grupos, tot:soma(doAno)};
+  });
+  var geral = soma(linhas);
+  var cab = ['Conta','Eixo','Ação','Saldo inicial','Saldo da conta','Empenhado (utilizado)','Liquidado','Disponível'];
+  var lin = function(l){ return [l.conta, l.eixo, l.acao, l.ini, l.saldo, l.emp, l.liq, l.util]; };
+  var nomeArq = 'extrato-contas-funsep-'+new Date().toISOString().slice(0,10);
+
+  if (formato==='excel') {
+    var rows = [['Extrato das Contas FUNSEP'], [filtro], []];
+    estrutura.forEach(function(a){
+      rows.push(['ANO DE REPASSE '+(a.ano==null?'NÃO INFORMADO':a.ano)]);
+      a.grupos.forEach(function(g){
+        rows.push([g.nome]); rows.push(cab);
+        g.linhas.forEach(function(l){ rows.push(lin(l)); });
+        rows.push(['Subtotal '+g.nome.split(' (')[0],'','',g.tot.ini,g.tot.saldo,g.tot.emp,g.tot.liq,g.tot.util]);
+        rows.push([]);
+      });
+      rows.push(['TOTAL '+(a.ano==null?'sem ano':a.ano)+' — utilizado', a.tot.emp, '', 'disponível', a.tot.util]);
+      rows.push([]);
+    });
+    rows.push(['TOTAL GERAL — utilizado', geral.emp, '', 'disponível', geral.util]);
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:34},{wch:16},{wch:14},{wch:16},{wch:16},{wch:20},{wch:16},{wch:16}];
+    var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'FUNSEP');
+    XLSX.writeFile(wb, nomeArq+'.xlsx');
+    showToast('Planilha gerada.');
+    return;
+  }
+
+  var num = [3,4,5,6,7];
+  var td = function(v,i,b){ var n=num.indexOf(i)>-1; return '<td style="padding:5px 7px;font-size:10px;'+(n?'text-align:right;white-space:nowrap;':'')+(b?'font-weight:700;':'')+'">'+(n?fmtMoeda(v):escDP(v==null?'':v))+'</td>'; };
+  var caixa = function(rot, util, disp, grande){
+    return '<div style="display:flex;gap:12px;margin:8px 0 4px">'+
+      '<div style="flex:1;background:#fef2f2;border-radius:8px;padding:'+(grande?'12px':'8px')+' 12px"><div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">'+rot+' — total utilizado</div><div style="font-size:'+(grande?'17px':'14px')+';font-weight:800;color:#991b1b">'+fmtMoeda(util)+'</div></div>'+
+      '<div style="flex:1;background:#ecfdf5;border-radius:8px;padding:'+(grande?'12px':'8px')+' 12px"><div style="font-size:10px;color:#065f46;font-weight:700;text-transform:uppercase">'+rot+' — total disponível</div><div style="font-size:'+(grande?'17px':'14px')+';font-weight:800;color:#065f46">'+fmtMoeda(disp)+'</div></div></div>';
+  };
+  var corpo = estrutura.map(function(a){
+    return '<div style="page-break-inside:avoid"><h2 style="font-size:15px;color:#065f46;border-left:5px solid #065f46;padding-left:8px;margin:20px 0 6px">Ano de repasse '+(a.ano==null?'não informado':a.ano)+'</h2>'+
+      a.grupos.map(function(g){
+        return '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin:10px 0 4px">'+g.nome+'</div>'+
+          '<table><thead><tr>'+cab.map(function(c,i){return '<th style="'+(num.indexOf(i)>-1?'text-align:right':'')+'">'+c+'</th>';}).join('')+'</tr></thead><tbody>'+
+          g.linhas.map(function(l,k){ return '<tr style="background:'+(k%2?'#f9fafb':'#fff')+'">'+lin(l).map(function(v,i){return td(v,i,false);}).join('')+'</tr>'; }).join('')+
+          '<tr style="background:#eef2f7">'+['Subtotal '+g.nome.split(' (')[0],'','',g.tot.ini,g.tot.saldo,g.tot.emp,g.tot.liq,g.tot.util].map(function(v,i){return td(v,i,true);}).join('')+'</tr>'+
+          '</tbody></table>';
+      }).join('')+
+      caixa('Ano '+(a.ano==null?'não informado':a.ano), a.tot.emp, a.tot.util)+'</div>';
+  }).join('');
+  if (!estrutura.length) corpo = '<div style="font-size:12px;color:#888;padding:10px 0">Nenhuma conta para o filtro selecionado.</div>';
+  else corpo += '<h2 style="font-size:15px;color:#1a3a5c;margin:22px 0 4px">Total geral'+(ano?' — '+ano:'')+'</h2>'+caixa('Geral', geral.emp, geral.util, true);
+  var dt = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  var win = window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Extrato das Contas FUNSEP</title>'+
+    '<style>body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#222}@media print{@page{size:A4 landscape;margin:10mm}}'+
+    'table{width:100%;border-collapse:collapse}th{background:#1a3a5c;color:#fff;padding:6px 7px;text-align:left;font-size:10px}td{border-bottom:1px solid #eee}</style></head><body>'+
+    '<div style="border-bottom:3px solid #1a3a5c;padding-bottom:10px;margin-bottom:6px">'+
+    '<div style="font-size:10px;color:#666;font-weight:700;letter-spacing:1px;text-transform:uppercase">Estado do Amapá — FUNSEP — Núcleo Financeiro</div>'+
+    '<div style="font-size:17px;font-weight:700;color:#1a3a5c">Extrato das Contas FUNSEP</div>'+
+    '<div style="font-size:11px;color:#888">'+filtro+' · Investimento = ND 4 · Custeio = ND 3 · Utilizado = valor empenhado (exceto anulados) · Emitido em '+dt+'</div></div>'+
+    corpo+'</body></html>');
+  win.document.close();
+  setTimeout(function(){ win.print(); }, 600);
 }
 
 verificarSessao();
