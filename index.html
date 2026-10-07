@@ -535,11 +535,14 @@ tr:hover td{background:#f8fafc}
           <button class="btn-primary" id="fin-btn-add" onclick="abrirModalEmpenho()"><i class="ti ti-plus"></i> Novo Empenho</button>
         </div>
 
+        <!-- Seletor de Unidade Gestora -->
+        <div id="fin-ug-seletor" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px"></div>
+
         <!-- Dashboard Núcleo Financeiro -->
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px" id="fin-metrics"></div>
 
         <!-- Gráficos -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+        <div id="fin-graficos" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
           <div class="card" style="padding:16px">
             <div class="sec-label">Distribuição por Eixo</div>
             <canvas id="fin-chart-eixo" style="max-height:200px"></canvas>
@@ -553,7 +556,7 @@ tr:hover td{background:#f8fafc}
         <!-- Abas internas -->
         <div style="display:flex;gap:0;border-bottom:2px solid #e0e0e0;margin-bottom:18px">
           <button id="fin-tab-empenhos" onclick="finTab('empenhos')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;color:#1a3a5c;border-bottom:3px solid #1a3a5c;cursor:pointer;margin-bottom:-2px">Empenhos</button>
-          <button id="fin-tab-contas" onclick="finTab('contas')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Contas</button>
+          <button id="fin-tab-contas" onclick="finTab('contas')" data-ug-funsep="1" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Contas</button>
         </div>
 
         <!-- CONTAS -->
@@ -3507,6 +3510,40 @@ function selecionarEtapa(id) {
 var CONTAS_FIN = [];
 var EMPENHOS_FIN = [];
 var finAbaAtiva = 'empenhos';
+var FIN_UG = 'FUNSEP';
+
+// Unidade gestora do empenho (registros antigos sem UG contam como FUNSEP)
+function ugEmpenho(e) { return e.ug || 'FUNSEP'; }
+
+function renderSeletorUG() {
+  var el = document.getElementById('fin-ug-seletor'); if (!el) return;
+  var ugs = [
+    {id:'FUNSEP', nome:'FUNSEP', desc:'Fundo Estadual de Segurança Pública — contas do FSP', cor:'#065f46', bg:'#d1fae5'},
+    {id:'SEJUSP', nome:'SEJUSP', desc:'Secretaria de Estado da Justiça e Segurança Pública — orçamento próprio', cor:'#1e40af', bg:'#dbeafe'}
+  ];
+  el.innerHTML = ugs.map(function(u){
+    var emps = EMPENHOS_FIN.filter(function(e){ return ugEmpenho(e)===u.id && e.situacao!=='anulado'; });
+    var tot = emps.reduce(function(s,e){ return s+parseFloat(e.valor||0); },0);
+    var ativo = FIN_UG===u.id;
+    return '<div onclick="finUG(\''+u.id+'\')" style="cursor:pointer;border-radius:12px;padding:14px 16px;border:2px solid '+(ativo?u.cor:'#e5e7eb')+';background:'+(ativo?u.bg:'#fff')+';display:flex;justify-content:space-between;align-items:center;gap:10px">'+
+      '<div><div style="font-size:15px;font-weight:800;color:'+u.cor+'"><i class="ti ti-building-bank"></i> '+u.nome+'</div>'+
+      '<div style="font-size:11px;color:#666">'+u.desc+'</div></div>'+
+      '<div style="text-align:right;white-space:nowrap"><div style="font-weight:700;color:#1a3a5c">'+fmtMoeda(tot)+'</div>'+
+      '<div style="font-size:11px;color:#888">'+emps.length+' empenho(s)</div></div></div>';
+  }).join('');
+}
+
+function finUG(ug) {
+  FIN_UG = ug;
+  var funsep = ug==='FUNSEP';
+  var g = document.getElementById('fin-graficos'); if (g) g.style.display = funsep ? 'grid' : 'none';
+  var bc = document.getElementById('fin-tab-contas'); if (bc) bc.style.display = funsep ? '' : 'none';
+  renderSeletorUG();
+  renderMetricsFinanceiro();
+  if (!funsep && finAbaAtiva==='contas') finTab('empenhos');
+  else if (finAbaAtiva==='contas') renderContas();
+  else renderEmpenhos();
+}
 
 var ND_LABELS = { '3':'3 — Serviços de Terceiros', '4':'4 — Equipamentos e Material Permanente' };
 
@@ -3616,10 +3653,8 @@ function fmtMoeda(v) {
 // ── RENDER FINANCEIRO (metrics + contas) ──
 async function renderFinanceiro() {
   await carregarFinanceiro();
-  renderMetricsFinanceiro();
   popularFiltroAno();
-  if (finAbaAtiva === 'contas') renderContas();
-  else renderEmpenhos();
+  finUG(FIN_UG);
 }
 
 function popularFiltroAno() {
@@ -3632,6 +3667,18 @@ function popularFiltroAno() {
 }
 
 function renderMetricsFinanceiro() {
+  if (FIN_UG==='SEJUSP') {
+    var emps = EMPENHOS_FIN.filter(function(e){ return ugEmpenho(e)==='SEJUSP' && e.situacao!=='anulado'; });
+    var soma = function(l){ return l.reduce(function(s,e){ return s+parseFloat(e.valor||0); },0); };
+    var tot = soma(emps), liq = soma(emps.filter(function(e){return e.situacao==='liquidado';}));
+    var elS = document.getElementById('fin-metrics'); if (!elS) return;
+    elS.innerHTML =
+      '<div class="metric"><div class="metric-val" style="font-size:18px">'+fmtMoeda(tot)+'</div><div class="metric-lbl">Total Empenhado (SEJUSP)</div></div>'+
+      '<div class="metric"><div class="metric-val" style="font-size:18px;color:#1e40af">'+fmtMoeda(liq)+'</div><div class="metric-lbl">Liquidado</div></div>'+
+      '<div class="metric"><div class="metric-val" style="font-size:18px;color:#b45309">'+fmtMoeda(tot-liq)+'</div><div class="metric-lbl">A liquidar</div></div>'+
+      '<div class="metric"><div class="metric-val">'+emps.length+'</div><div class="metric-lbl">Empenhos</div></div>';
+    return;
+  }
   var totalInicial = CONTAS_FIN.reduce(function(s,c){ return s+parseFloat(c.saldo_inicial||0); },0);
   var totalEmp     = CONTAS_FIN.reduce(function(s,c){ return s+calcularSaldoUtilizar(c.id); },0);
   var totalDisp    = totalInicial - totalEmp;
@@ -3741,6 +3788,7 @@ function renderEmpenhos(filtroContaId) {
     var ok = !busca || (e.numero||'').toLowerCase().indexOf(busca)>-1 || (e.processo_siga||'').toLowerCase().indexOf(busca)>-1 ||
       pr.prodoc.toLowerCase().indexOf(busca)>-1 || (e.credor||'').toLowerCase().indexOf(busca)>-1;
     if (filtroContaId) ok = ok && e.conta_id === filtroContaId;
+    else ok = ok && ugEmpenho(e) === FIN_UG;
     return ok;
   });
 
@@ -3748,7 +3796,7 @@ function renderEmpenhos(filtroContaId) {
   if (!tb) return;
 
   if (!lista.length) {
-    tb.innerHTML='<tr><td colspan="11"><div class="empty"><i class="ti ti-file-invoice"></i><p>Nenhum empenho cadastrado.</p></div></td></tr>';
+    tb.innerHTML='<tr><td colspan="11"><div class="empty"><i class="ti ti-file-invoice"></i><p>Nenhum empenho cadastrado para esta unidade gestora.</p></div></td></tr>';
     return;
   }
 
@@ -3889,7 +3937,7 @@ async function abrirModalEmpenho(id) {
   } else {
     ['emp-fin-numero','emp-fin-obs','emp-fin-credor'].forEach(function(f){document.getElementById(f).value='';});
     document.getElementById('emp-fin-data').value     = new Date().toISOString().split('T')[0];
-    document.getElementById('emp-fin-ug').value       = 'FUNSEP';
+    document.getElementById('emp-fin-ug').value       = FIN_UG;
     document.getElementById('emp-fin-tipo').value     = 'Ordinário';
     document.getElementById('emp-fin-processo').value = '';
     document.getElementById('emp-fin-conta').value    = '';
