@@ -852,7 +852,7 @@ tr:hover td{background:#f8fafc}
           </div>
 
           <!-- Cards dashboard -->
-          <div class="metrics" id="ha-metrics" style="grid-template-columns:repeat(5,1fr);margin-bottom:18px"></div>
+          <div class="metrics" id="ha-metrics" style="grid-template-columns:repeat(6,1fr);margin-bottom:18px"></div>
 
           <!-- Gráficos -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
@@ -868,7 +868,7 @@ tr:hover td{background:#f8fafc}
 
           <!-- Filtros -->
           <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-            <input type="text" id="ha-busca" placeholder="Buscar curso..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:240px" oninput="renderTabelaHoraAula()">
+            <input type="text" id="ha-busca" placeholder="Buscar PRODOC, curso ou profissional..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:240px" oninput="renderTabelaHoraAula()">
             <select id="ha-filtro-status" style="padding:7px 10px;border:1px solid #ccc;border-radius:7px;font-size:12px" onchange="renderTabelaHoraAula()">
               <option value="">Todos os status</option>
               <option value="planejamento">Planejamento</option>
@@ -889,9 +889,9 @@ tr:hover td{background:#f8fafc}
             <div class="table-wrap">
               <table>
                 <thead><tr>
-                  <th>Curso / Capacitação</th><th>Eixo</th><th>Fase</th>
-                  <th>Início</th><th>CH Total</th><th>Profissionais</th>
-                  <th style="text-align:right">Valor estimado</th><th>Status</th><th></th>
+                  <th>PRODOC</th><th>Curso / Capacitação</th><th>Eixo</th><th>Período</th>
+                  <th style="text-align:center">Turmas</th>
+                  <th style="text-align:right">Valor autorizado</th><th style="text-align:right">Pago</th><th>Status</th><th></th>
                 </tr></thead>
                 <tbody id="tb-hora-aula"></tbody>
               </table>
@@ -1213,6 +1213,19 @@ tr:hover td{background:#f8fafc}
 
             <!-- ABA DADOS -->
             <div id="ha-painel-dados">
+              <div class="sec-label" style="margin-bottom:10px">Processo</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+                <div class="form-group"><label>Nº PRODOC do processo de pagamento</label>
+                  <input type="text" class="form-input" id="curso-prodoc" placeholder="0023.0000.0000.0000/2026"></div>
+                <div class="form-group"><label>Processo de análise (apenso)</label>
+                  <input type="text" class="form-input" id="curso-proc-analise" placeholder="0043.0000.0000.0000/2026"></div>
+                <div class="form-group"><label>Portaria de designação</label>
+                  <input type="text" class="form-input" id="curso-portaria-desig" placeholder="Ex: Portaria 010/2026-FUNSEP (DOE ...)"></div>
+                <div class="form-group"><label>Portaria de pagamento</label>
+                  <input type="text" class="form-input" id="curso-portaria-pag" placeholder="Ex: Portaria 012/2026-FUNSEP"></div>
+                <div class="form-group full"><label>Fonte / conta / dotação</label>
+                  <input type="text" class="form-input" id="curso-fonte" placeholder="Ex: FSP Repasse 2023 - RMVI - Conta 8753-X - ND 339036"></div>
+              </div>
               <div class="sec-label" style="margin-bottom:10px">Identificação do curso</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
                 <div class="form-group full"><label>Nome do curso / capacitação</label>
@@ -1846,6 +1859,122 @@ tr:hover td{background:#f8fafc}
           <div class="modal-footer">
             <button class="btn-secondary" onclick="fecharModal('m-execucao')">Fechar</button>
             <button class="btn-secondary" onclick="exportarExecucaoPDF()"><i class="ti ti-file-type-pdf"></i> Relatório PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL DETALHE DO PROCESSO DE HORA-AULA -->
+      <div class="modal-overlay" id="m-curso-det">
+        <div class="modal-box" style="width:1040px;max-height:92vh">
+          <div class="modal-header">
+            <div><div class="modal-title" id="hcd-title">Processo de hora-aula</div>
+            <div class="modal-sub" id="hcd-sub"></div></div>
+            <button class="modal-close" onclick="fecharModal('m-curso-det')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <div id="hcd-info"></div>
+            <div id="hcd-cards" style="margin-top:14px"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px;gap:8px;flex-wrap:wrap">
+              <div style="font-weight:700;color:#1a3a5c;font-size:14px">Pagamentos por turma e profissional</div>
+              <div style="display:flex;gap:8px">
+                <button class="btn-secondary" onclick="abrirModalCurso(CURSO_ABERTO)"><i class="ti ti-edit"></i> Editar processo</button>
+                <button class="btn-secondary" onclick="abrirModalHaPag(null)"><i class="ti ti-plus"></i> Lançamento avulso</button>
+                <button class="btn-primary" onclick="abrirModalHaTurma()"><i class="ti ti-users-plus"></i> Lançar turma</button>
+              </div>
+            </div>
+            <div class="table-wrap" style="border:1px solid #eee;border-radius:8px">
+              <table>
+                <thead><tr>
+                  <th>Profissional</th><th>Função</th><th style="text-align:center">CH</th><th style="text-align:right">Valor/h</th>
+                  <th style="text-align:right">Valor</th><th>Empenho</th><th>Liquidação / OB</th><th>Pago em</th><th>Status</th><th></th>
+                </tr></thead>
+                <tbody id="hcd-tb"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-curso-det')">Fechar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL LANÇAR TURMA (gera um lançamento por profissional) -->
+      <div class="modal-overlay" id="m-ha-turma">
+        <div class="modal-box" style="width:620px">
+          <div class="modal-header">
+            <div><div class="modal-title">Lançar turma</div>
+            <div class="modal-sub">Cria um lançamento para cada profissional do processo</div></div>
+            <button class="modal-close" onclick="fecharModal('m-ha-turma')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group"><label>Turma</label><input type="text" class="form-input" id="ht-turma" placeholder="Ex: Turma 3"></div>
+              <div class="form-group"><label>CH de cada profissional (h)</label><input type="number" class="form-input" id="ht-ch" oninput="renderPreviewHaTurma()"></div>
+              <div class="form-group"><label>Início</label><input type="date" class="form-input" id="ht-ini"></div>
+              <div class="form-group"><label>Término</label><input type="date" class="form-input" id="ht-fim"></div>
+              <div class="form-group"><label>Status inicial</label>
+                <select class="form-input" id="ht-status">
+                  <option value="previsto">Previsto</option><option value="empenhado">Empenhado</option>
+                  <option value="liquidado">Liquidado</option><option value="pago">Pago</option>
+                </select></div>
+              <div class="form-group"><label>Processo de pagamento (apenso)</label><input type="text" class="form-input" id="ht-proc" placeholder="0000.0000.0000.0000/2026"></div>
+            </div>
+            <div id="ht-preview" style="margin-top:6px"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-ha-turma')">Cancelar</button>
+            <button class="btn-primary" onclick="salvarHaTurma()"><i class="ti ti-device-floppy"></i> Lançar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL LANÇAMENTO DE HORA-AULA -->
+      <div class="modal-overlay" id="m-ha-pag">
+        <div class="modal-box" style="width:680px;max-height:92vh">
+          <div class="modal-header">
+            <div><div class="modal-title" id="hp-title">Lançamento de hora-aula</div>
+            <div class="modal-sub">Valores da Portaria SENASP 63/2012 — Anexo II</div></div>
+            <button class="modal-close" onclick="fecharModal('m-ha-pag')"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="hp-id">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+              <div class="form-group"><label>Turma</label><input type="text" class="form-input" id="hp-turma" placeholder="Ex: Turma 1"></div>
+              <div class="form-group"><label>Início</label><input type="date" class="form-input" id="hp-ini"></div>
+              <div class="form-group"><label>Término</label><input type="date" class="form-input" id="hp-fim"></div>
+              <div class="form-group" style="grid-column:span 2"><label>Profissional</label><input type="text" class="form-input" id="hp-nome" list="hp-nomes" placeholder="Nome completo"><datalist id="hp-nomes"></datalist></div>
+              <div class="form-group"><label>CPF</label><input type="text" class="form-input" id="hp-cpf"></div>
+              <div class="form-group"><label>Função</label>
+                <select class="form-input" id="hp-funcao" onchange="calcHaPag(true)">
+                  <option value="docente">Docente/Instrutor</option><option value="monitor">Monitor</option>
+                  <option value="coordenador">Coordenador</option><option value="supervisor">Supervisor</option>
+                  <option value="conferencista">Conferencista</option>
+                </select></div>
+              <div class="form-group"><label>Titulação</label>
+                <select class="form-input" id="hp-nivel" onchange="calcHaPag(true)">
+                  <option value="fundamental">Fundamental</option><option value="medio">Médio</option><option value="graduacao">Graduação</option>
+                  <option value="especializacao">Especialização</option><option value="mestrado">Mestrado</option><option value="doutorado">Doutorado</option>
+                </select></div>
+              <div class="form-group"><label>Carga horária (h)</label><input type="number" class="form-input" id="hp-ch" oninput="calcHaPag(false)"></div>
+              <div class="form-group"><label>Valor/hora (R$)</label><input type="number" step="0.01" class="form-input" id="hp-vh" oninput="calcHaPag(false)"></div>
+              <div class="form-group"><label>Valor total</label><div id="hp-total" style="padding:9px 0;font-weight:700;color:#1a3a5c;font-size:15px">R$ 0,00</div></div>
+              <div class="form-group"><label>Status</label>
+                <select class="form-input" id="hp-status">
+                  <option value="previsto">Previsto</option><option value="empenhado">Empenhado</option><option value="liquidado">Liquidado</option>
+                  <option value="pago">Pago</option><option value="cancelado">Cancelado</option>
+                </select></div>
+              <div class="form-group"><label>Empenho (NE)</label><input type="text" class="form-input" id="hp-ne" placeholder="2026NE00000"></div>
+              <div class="form-group"><label>Liquidação (NL)</label><input type="text" class="form-input" id="hp-nl" placeholder="2026NL00000"></div>
+              <div class="form-group"><label>Ordem bancária (OB)</label><input type="text" class="form-input" id="hp-ob" placeholder="2026OB00000"></div>
+              <div class="form-group"><label>Data do pagamento</label><input type="date" class="form-input" id="hp-data"></div>
+              <div class="form-group" style="grid-column:span 2"><label>Processo de pagamento (apenso)</label><input type="text" class="form-input" id="hp-proc"></div>
+              <div class="form-group" style="grid-column:1/-1"><label>Observações</label><textarea class="form-input" id="hp-obs" style="min-height:50px"></textarea></div>
+            </div>
+            <div id="hp-alerta" style="display:none;background:#fef3c7;color:#92400e;border-radius:8px;padding:8px 12px;font-size:12px"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="fecharModal('m-ha-pag')">Cancelar</button>
+            <button class="btn-primary" onclick="salvarHaPag()"><i class="ti ti-device-floppy"></i> Salvar</button>
           </div>
         </div>
       </div>
@@ -4915,6 +5044,8 @@ renderContratos = async function() {
 // ════════════════════════════════════════════════
 
 var CURSOS = [];
+var HA_PAGS = [];
+var CURSO_ABERTO = null;
 var DIARIAS = [];
 var DIARIAS_PROC = [];
 var DIARIA_PROC_ABERTO = null;
@@ -5246,6 +5377,10 @@ async function carregarCursos() {
     var r = await sb.from('cursos_ha').select('*').order('created_at', {ascending:false});
     if (!r.error) CURSOS = r.data||[];
   } catch(e) { CURSOS = []; }
+  try {
+    var rp = await sb.from('horaaula_pagamentos').select('*');
+    if (!rp.error) HA_PAGS = rp.data||[];
+  } catch(e) { HA_PAGS = []; }
 }
 
 async function carregarDiarias() {
@@ -5284,7 +5419,8 @@ function renderMetricsHA() {
     '<div class="metric"><div class="metric-val" style="color:#6d28d9">'+ativos+'</div><div class="metric-lbl">Em andamento</div></div>'+
     '<div class="metric"><div class="metric-val" style="color:#9d174d">'+pagando+'</div><div class="metric-lbl">Ag. pagamento</div></div>'+
     '<div class="metric"><div class="metric-val" style="color:#166534">'+concl+'</div><div class="metric-lbl">Concluídos</div></div>'+
-    '<div class="metric"><div class="metric-val" style="font-size:14px;color:#1a3a5c">'+fmtMoeda(valorTotal)+'</div><div class="metric-lbl">Valor total estimado</div></div>';
+    '<div class="metric"><div class="metric-val" style="font-size:14px;color:#1a3a5c">'+fmtMoeda(valorTotal)+'</div><div class="metric-lbl">Valor autorizado</div></div>'+
+    '<div class="metric"><div class="metric-val" style="font-size:14px;color:#166534">'+fmtMoeda(CURSOS.reduce(function(s,c){return s+totaisCursoHA(c.id).pago;},0))+'</div><div class="metric-lbl">Valor pago</div></div>';
 }
 
 function renderDashboardHA() {
@@ -5354,8 +5490,9 @@ function renderTabelaHoraAula() {
   var eixo   = (document.getElementById('ha-filtro-eixo')||{value:''}).value;
 
   var lista = CURSOS.filter(function(c){
-    var mb = !busca||(c.nome||'').toLowerCase().indexOf(busca)>-1;
-    return mb&&(!status||c.status===status)&&(!eixo||c.eixo===eixo);
+    var nomes = pagsDoCurso(c.id).map(function(p){return p.nome||'';}).join(' ')+' '+(c.profissionais||[]).map(function(p){return p.nome||'';}).join(' ');
+    var txt = [c.prodoc, c.nome, c.processo_analise, c.orgao_req, nomes].join(' ').toLowerCase();
+    return (!busca||txt.indexOf(busca)>-1)&&(!status||c.status===status)&&(!eixo||c.eixo===eixo);
   });
 
   var tb = document.getElementById('tb-hora-aula');
@@ -5364,18 +5501,20 @@ function renderTabelaHoraAula() {
 
   tb.innerHTML = lista.map(function(c){
     var sit = HA_STATUS_CORES[c.status]||{bg:'#f3f4f6',cor:'#374151'};
-    var profs = c.profissionais ? c.profissionais.length : 0;
-    return '<tr>'+
-      '<td style="font-weight:600;color:#1a3a5c;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+c.nome+'">'+c.nome+'</td>'+
-      '<td><span class="tag" style="background:#0e749022;color:#0e7490;font-weight:700">'+c.eixo+'</span></td>'+
-      '<td style="font-size:11px;color:#555">'+c.acao+'</td>'+
-      '<td style="font-size:12px;color:#888">'+fmtDataBR(c.data_inicio)+'</td>'+
-      '<td style="text-align:center;font-weight:600">'+(c.carga_horaria||0)+'h</td>'+
-      '<td style="text-align:center">'+profs+' prof.</td>'+
-      '<td style="text-align:right;font-weight:600;color:#1a3a5c">'+fmtMoeda(c.valor_estimado||0)+'</td>'+
-      '<td><span style="background:'+sit.bg+';color:'+sit.cor+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">'+HA_STATUS_LABELS[c.status]+'</span></td>'+
-      '<td style="text-align:right;white-space:nowrap">'+
-        '<button class="btn-icon" onclick="editarCurso(\''+c.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
+    var t = totaisCursoHA(c.id);
+    return '<tr style="cursor:pointer" onclick="abrirDetalheCurso(\''+c.id+'\')">'+
+      '<td style="font-weight:600;white-space:nowrap">'+(c.prodoc?escDP(c.prodoc):'<span style="color:#aaa;font-weight:400">não informado</span>')+'</td>'+
+      '<td style="font-weight:600;color:#1a3a5c;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escDP(c.nome)+'">'+escDP(c.nome)+
+        (c.orgao_req?'<div style="font-size:10px;color:#888;font-weight:400">'+escDP(c.orgao_req)+'</div>':'')+'</td>'+
+      '<td><span class="tag" style="background:#0e749022;color:#0e7490;font-weight:700">'+escDP(c.eixo||'—')+'</span></td>'+
+      '<td style="font-size:11px;color:#888;white-space:nowrap">'+(c.data_inicio?fmtDataBR(c.data_inicio)+(c.data_fim?' a '+fmtDataBR(c.data_fim):''):'—')+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+t.nTurmasPagas+' / '+(c.num_turmas||1)+'<div style="font-size:10px;color:#888;font-weight:400">pagas / previstas</div></td>'+
+      '<td style="text-align:right;font-weight:600;color:#1a3a5c;white-space:nowrap">'+fmtMoeda(c.valor_estimado||0)+'</td>'+
+      '<td style="text-align:right;font-weight:700;color:#166534;white-space:nowrap">'+fmtMoeda(t.pago)+'</td>'+
+      '<td><span style="background:'+sit.bg+';color:'+sit.cor+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">'+(HA_STATUS_LABELS[c.status]||c.status)+'</span></td>'+
+      '<td style="text-align:right;white-space:nowrap" onclick="event.stopPropagation()">'+
+        '<button class="btn-icon" onclick="abrirDetalheCurso(\''+c.id+'\')" title="Abrir"><i class="ti ti-folder-open"></i></button>'+
+        '<button class="btn-icon" onclick="editarCurso(\''+c.id+'\')" title="Editar processo"><i class="ti ti-edit"></i></button>'+
         '<button class="btn-icon" onclick="excluirCurso(\''+c.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
       '</td></tr>';
   }).join('');
@@ -5563,6 +5702,7 @@ function verificarPrazosHA() {
 
 // ── SALVAR CURSO ──
 function abrirModalCurso(id) {
+  fecharModal('m-curso-det');
   profissionaisTemp = [];
   cursoStatusAtual  = 'planejamento';
   document.getElementById('curso-edit-id').value = id||'';
@@ -5584,11 +5724,16 @@ function abrirModalCurso(id) {
       document.getElementById('curso-orgao').value         = c.orgao||'SEJUSP';
       document.getElementById('curso-orgao-req').value    = c.orgao_req||'';
       document.getElementById('curso-obs').value          = c.obs||'';
+      document.getElementById('curso-prodoc').value        = c.prodoc||'';
+      document.getElementById('curso-proc-analise').value  = c.processo_analise||'';
+      document.getElementById('curso-portaria-desig').value= c.portaria_designacao||'';
+      document.getElementById('curso-portaria-pag').value  = c.portaria_pagamento||'';
+      document.getElementById('curso-fonte').value         = c.fonte||'';
       cursoStatusAtual = c.status||'planejamento';
       profissionaisTemp = c.profissionais ? JSON.parse(JSON.stringify(c.profissionais)) : [];
     }
   } else {
-    ['curso-nome','curso-ch','curso-inicio','curso-fim','curso-alunos','curso-orgao-req','curso-obs'].forEach(function(f){
+    ['curso-nome','curso-ch','curso-inicio','curso-fim','curso-alunos','curso-orgao-req','curso-obs','curso-prodoc','curso-proc-analise','curso-portaria-desig','curso-portaria-pag','curso-fonte'].forEach(function(f){
       var el=document.getElementById(f); if(el) el.value='';
     });
     document.getElementById('curso-eixo').value='';
@@ -5630,20 +5775,33 @@ async function salvarCurso() {
     status:        cursoStatusAtual,
     profissionais: profissionaisTemp,
     valor_estimado: valorEstimado,
+    prodoc:              document.getElementById('curso-prodoc').value.trim()||null,
+    processo_analise:    document.getElementById('curso-proc-analise').value.trim()||null,
+    portaria_designacao: document.getElementById('curso-portaria-desig').value.trim()||null,
+    portaria_pagamento:  document.getElementById('curso-portaria-pag').value.trim()||null,
+    fonte:               document.getElementById('curso-fonte').value.trim()||null,
   };
 
   var editId = document.getElementById('curso-edit-id').value;
   try {
-    if (editId) await sb.from('cursos_ha').update(payload).eq('id', editId);
-    else await sb.from('cursos_ha').insert(payload);
+    var r;
+    if (editId) r = await sb.from('cursos_ha').update(payload).eq('id', editId);
+    else { payload.criado_por = PERFIL ? PERFIL.nome : (USER ? USER.email : null); r = await sb.from('cursos_ha').insert(payload).select().single(); }
+    if (r.error) {
+      if (String(r.error.message||'').indexOf('idx_cursos_ha_prodoc_unico')>-1 || r.error.code==='23505') { showToast('Já existe um processo de hora-aula com este PRODOC.','error'); return; }
+      throw r.error;
+    }
     fecharModal('m-curso');
     await carregarCursos();
     renderHoraAula();
     showToast(editId?'Processo atualizado!':'Processo criado!');
+    abrirDetalheCurso(editId || r.data.id);
   } catch(e) { showToast('Erro ao salvar.','error'); console.error(e); }
 }
 
 async function excluirCurso(id) {
+  var n = pagsDoCurso(id).length;
+  if (n) { showToast('Este processo tem '+n+' lançamento(s) de pagamento. Exclua-os antes de excluir o processo.','error'); return; }
   if (!confirm('Excluir este processo?')) return;
   await sb.from('cursos_ha').delete().eq('id', id);
   await carregarCursos();
@@ -7031,6 +7189,255 @@ function toggleTheme() {
   try { salvo = localStorage.getItem('cp-tema') || 'light'; } catch(e) {}
   aplicarTema(salvo);
 })();
+
+
+// ════════════════════════════════════════════════
+// HORA-AULA — DETALHE DO PROCESSO (master/detail)
+// Cada processo (PRODOC) é um cadastro próprio; ao abrir, aparecem os
+// pagamentos por turma e profissional (tabela horaaula_pagamentos).
+// ════════════════════════════════════════════════
+var NIVEL_HA_LABELS = {fundamental:'Fundamental',medio:'Médio',graduacao:'Graduação',especializacao:'Especialização',mestrado:'Mestrado',doutorado:'Doutorado'};
+var HAP_STATUS = {
+  previsto:{l:'Previsto',bg:'#f3f4f6',cor:'#374151'},
+  empenhado:{l:'Empenhado',bg:'#dbeafe',cor:'#1e40af'},
+  liquidado:{l:'Liquidado',bg:'#fef3c7',cor:'#92400e'},
+  pago:{l:'Pago',bg:'#dcfce7',cor:'#166534'},
+  cancelado:{l:'Cancelado',bg:'#fee2e2',cor:'#991b1b'}
+};
+
+function pagsDoCurso(cid) {
+  return HA_PAGS.filter(function(p){ return p.curso_id===cid; }).sort(function(a,b){
+    var da=a.periodo_inicio||'9999', db=b.periodo_inicio||'9999';
+    if (da!==db) return da<db?-1:1;
+    var ta=/^turma/i.test(a.turma||'')?0:1, tb2=/^turma/i.test(b.turma||'')?0:1;
+    if (ta!==tb2) return ta-tb2;
+    if ((a.turma||'')!==(b.turma||'')) return (a.turma||'')<(b.turma||'')?-1:1;
+    return (a.nome||'')<(b.nome||'')?-1:1;
+  });
+}
+
+function totaisCursoHA(cid) {
+  var t = {lanc:0, empenhado:0, pago:0, aberto:0, turmasPagas:{}};
+  pagsDoCurso(cid).forEach(function(p){
+    if (p.status==='cancelado') return;
+    var v = parseFloat(p.valor_total||0);
+    t.lanc += v;
+    if (p.empenho) t.empenhado += v;
+    if (p.status==='pago') { t.pago += v; t.turmasPagas[p.turma||'—'] = 1; }
+    else t.aberto += v;
+  });
+  t.nTurmasPagas = Object.keys(t.turmasPagas).length;
+  return t;
+}
+
+function abrirDetalheCurso(cid) {
+  CURSO_ABERTO = cid;
+  renderDetalheCurso();
+  abrirModal('m-curso-det');
+}
+
+function renderDetalheCurso() {
+  var c = CURSOS.find(function(x){return x.id===CURSO_ABERTO;});
+  if (!c) return;
+  document.getElementById('hcd-title').textContent = c.prodoc ? 'Processo PRODOC '+c.prodoc : 'Processo de hora-aula (sem PRODOC)';
+  document.getElementById('hcd-sub').textContent = c.nome||'';
+  var sit = HA_STATUS_CORES[c.status]||{bg:'#f3f4f6',cor:'#374151'};
+  var campo = function(l,v,span){ return '<div'+(span?' style="grid-column:'+span+'"':'')+'><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.03em">'+l+'</div><div style="font-size:13px;color:#222">'+(v?escDP(v):'—')+'</div></div>'; };
+  document.getElementById('hcd-info').innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;background:#f7f9fc;border-radius:10px;padding:14px">'+
+      campo('Eixo / ação', [c.eixo, c.acao].filter(Boolean).join(' · '))+
+      campo('Ano de repasse', c.ano_repasse)+
+      campo('Período', c.data_inicio ? fmtDataBR(c.data_inicio)+' a '+fmtDataBR(c.data_fim) : '')+
+      '<div><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.03em">Status</div><span style="background:'+sit.bg+';color:'+sit.cor+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">'+(HA_STATUS_LABELS[c.status]||c.status)+'</span></div>'+
+      campo('Turmas / CH por turma', (c.num_turmas||1)+' turma(s) · '+(c.carga_horaria||0)+'h')+
+      campo('Órgão requisitante', c.orgao_req)+
+      campo('Processo de análise', c.processo_analise, 'span 2')+
+      campo('Portaria de designação', c.portaria_designacao, 'span 2')+
+      campo('Portaria de pagamento', c.portaria_pagamento, 'span 2')+
+      campo('Fonte / conta / dotação', c.fonte, '1/-1')+
+      (c.obs ? campo('Observações', c.obs, '1/-1') : '')+
+    '</div>';
+
+  var t = totaisCursoHA(c.id);
+  var prev = parseFloat(c.valor_estimado||0);
+  var card = function(l,v,cor,sub){ return '<div class="metric"><div class="metric-val" style="font-size:15px;color:'+cor+'">'+v+'</div><div class="metric-lbl">'+l+(sub?'<br><span style="font-size:10px;color:#999">'+sub+'</span>':'')+'</div></div>'; };
+  document.getElementById('hcd-cards').innerHTML =
+    '<div class="metrics" style="grid-template-columns:repeat(4,1fr)">'+
+      card('Valor autorizado', fmtMoeda(prev), '#1a3a5c')+
+      card('Empenhado', fmtMoeda(t.empenhado), '#1e40af')+
+      card('Pago', fmtMoeda(t.pago), '#166534', t.nTurmasPagas+' turma(s) paga(s)')+
+      card('Empenhado não pago', fmtMoeda(Math.max(t.empenhado - t.pago,0)), (t.empenhado-t.pago)>0?'#b45309':'#888')+
+    '</div>';
+
+  var lista = pagsDoCurso(c.id);
+  var tb = document.getElementById('hcd-tb');
+  if (!lista.length) {
+    tb.innerHTML = '<tr><td colspan="10"><div class="empty"><i class="ti ti-school"></i><p>Nenhum pagamento lançado. Use "Lançar turma".</p></div></td></tr>';
+    return;
+  }
+  var html = '', grupo = null;
+  var grupos = {};
+  lista.forEach(function(p){ var k=(p.turma||'—')+'|'+(p.periodo_inicio||''); (grupos[k]=grupos[k]||[]).push(p); });
+  lista.forEach(function(p){
+    var k = (p.turma||'—')+'|'+(p.periodo_inicio||'');
+    if (k!==grupo) {
+      grupo = k;
+      var g = grupos[k];
+      var sub = g.filter(function(x){return x.status!=='cancelado';}).reduce(function(s,x){return s+parseFloat(x.valor_total||0);},0);
+      var sts = {}; g.forEach(function(x){ sts[x.status]=1; });
+      var stLabel = Object.keys(sts).map(function(s){ var m=HAP_STATUS[s]||HAP_STATUS.previsto; return '<span style="background:'+m.bg+';color:'+m.cor+';padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700">'+m.l+'</span>'; }).join(' ');
+      html += '<tr style="background:#f1f5f9"><td colspan="10" style="padding:8px 10px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div><b style="color:#1a3a5c">'+escDP(p.turma||'Sem turma')+'</b>'+
+        (p.periodo_inicio?' <span style="color:#666;font-size:12px">· '+fmtDataBR(p.periodo_inicio)+(p.periodo_fim?' a '+fmtDataBR(p.periodo_fim):'')+'</span>':'')+
+        (p.processo_pagamento?' <span style="color:#888;font-size:11px">· proc. '+escDP(p.processo_pagamento)+'</span>':'')+' '+stLabel+'</div>'+
+        '<div style="font-weight:700;color:#1a3a5c">'+fmtMoeda(sub)+'</div></div></td></tr>';
+    }
+    var m = HAP_STATUS[p.status]||HAP_STATUS.previsto;
+    var canc = p.status==='cancelado';
+    html += '<tr'+(canc?' style="opacity:.6"':'')+'>'+
+      '<td style="font-weight:500;min-width:170px"'+(p.obs?' title="'+escDP(p.obs)+'"':'')+'>'+escDP(p.nome)+(p.obs?' <i class="ti ti-info-circle" style="color:#888;font-size:12px"></i>':'')+
+        '<div style="font-size:10px;color:#888">'+escDP(p.cpf||'')+'</div></td>'+
+      '<td style="font-size:12px">'+escDP(FUNCAO_LABELS[p.funcao]||p.funcao||'—')+(p.nivel&&(p.funcao==='docente'||p.funcao==='conferencista')?'<div style="font-size:10px;color:#888">'+escDP(NIVEL_HA_LABELS[p.nivel]||p.nivel)+'</div>':'')+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+(parseFloat(p.ch||0))+'h</td>'+
+      '<td style="text-align:right;font-size:12px;white-space:nowrap">'+fmtMoeda(p.valor_hora||0)+'</td>'+
+      '<td style="text-align:right;font-weight:700;white-space:nowrap;color:#1a3a5c'+(canc?';text-decoration:line-through':'')+'">'+fmtMoeda(p.valor_total||0)+'</td>'+
+      '<td style="font-size:12px;white-space:nowrap">'+escDP(p.empenho||'—')+'</td>'+
+      '<td style="font-size:11px;white-space:nowrap;color:#555">'+escDP([p.liquidacao,p.ordem_bancaria].filter(Boolean).join(' · ')||'—')+'</td>'+
+      '<td style="font-size:11px;color:#555;white-space:nowrap">'+(p.data_pagamento?fmtDataBR(p.data_pagamento):'—')+'</td>'+
+      '<td><span style="background:'+m.bg+';color:'+m.cor+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">'+m.l+'</span></td>'+
+      '<td style="text-align:right;white-space:nowrap">'+
+        '<button class="btn-icon" onclick="abrirModalHaPag(\''+p.id+'\')" title="Editar"><i class="ti ti-edit"></i></button>'+
+        '<button class="btn-icon" onclick="excluirHaPag(\''+p.id+'\')" title="Excluir" style="color:#c0392b"><i class="ti ti-trash"></i></button>'+
+      '</td></tr>';
+  });
+  tb.innerHTML = html;
+}
+
+// ── Lançamento individual ──
+function abrirModalHaPag(id) {
+  var c = CURSOS.find(function(x){return x.id===CURSO_ABERTO;}) || {};
+  var p = id ? HA_PAGS.find(function(x){return x.id===id;}) : null;
+  document.getElementById('hp-title').textContent = p ? 'Editar lançamento' : 'Novo lançamento';
+  var dl = document.getElementById('hp-nomes');
+  dl.innerHTML = (c.profissionais||[]).map(function(x){ return '<option value="'+escDP(x.nome)+'">'; }).join('');
+  var v = function(id, val){ document.getElementById(id).value = val==null?'':val; };
+  v('hp-id', p?p.id:''); v('hp-turma', p?p.turma:''); v('hp-ini', p?p.periodo_inicio:''); v('hp-fim', p?p.periodo_fim:'');
+  v('hp-nome', p?p.nome:''); v('hp-cpf', p?p.cpf:''); v('hp-funcao', p?(p.funcao||'docente'):'docente');
+  v('hp-nivel', p?(p.nivel||'graduacao'):'graduacao'); v('hp-ch', p?p.ch:(c.carga_horaria||''));
+  v('hp-vh', p?p.valor_hora:''); v('hp-status', p?p.status:'previsto');
+  v('hp-ne', p?p.empenho:''); v('hp-nl', p?p.liquidacao:''); v('hp-ob', p?p.ordem_bancaria:'');
+  v('hp-data', p?p.data_pagamento:''); v('hp-proc', p?p.processo_pagamento:''); v('hp-obs', p?p.obs:'');
+  document.getElementById('hp-nome').onchange = function(){
+    var prof = (c.profissionais||[]).find(function(x){return (x.nome||'').toLowerCase()===this.value.toLowerCase();}, this);
+    if (prof) { v('hp-funcao', prof.funcao||'docente'); v('hp-nivel', prof.nivel||'graduacao'); calcHaPag(true); }
+  };
+  calcHaPag(!p);
+  abrirModal('m-ha-pag');
+}
+
+function valorHoraHA(funcao, nivel) {
+  return calcularValorProf({funcao:funcao, nivel:nivel, ch:1, turmas:1});
+}
+
+function calcHaPag(recalcVh) {
+  var f = document.getElementById('hp-funcao').value, n = document.getElementById('hp-nivel').value;
+  var vhTab = valorHoraHA(f, n);
+  var vhEl = document.getElementById('hp-vh');
+  if (recalcVh || !vhEl.value) vhEl.value = vhTab;
+  var ch = parseFloat(document.getElementById('hp-ch').value)||0;
+  var vh = parseFloat(vhEl.value)||0;
+  document.getElementById('hp-total').textContent = fmtMoeda(Math.round(ch*vh*100)/100);
+  var al = document.getElementById('hp-alerta'), msgs = [];
+  if (vh && Math.abs(vh-vhTab)>0.009) msgs.push('Valor/hora diferente da tabela da Portaria 63/2012 ('+fmtMoeda(vhTab)+' para esta função/titulação).');
+  if (ch>120) msgs.push('Carga horária acima de 120h — limite anual por profissional (Portaria SENASP 63/2012).');
+  al.style.display = msgs.length?'block':'none';
+  al.innerHTML = msgs.map(function(m){return '<i class="ti ti-alert-triangle"></i> '+m;}).join('<br>');
+}
+
+async function salvarHaPag() {
+  var nome = document.getElementById('hp-nome').value.trim();
+  if (!nome) { showToast('Informe o profissional.','error'); return; }
+  var g = function(id){ return document.getElementById(id).value.trim(); };
+  var ch = parseFloat(g('hp-ch'))||0, vh = parseFloat(g('hp-vh'))||0;
+  var payload = {
+    curso_id: CURSO_ABERTO, turma: g('hp-turma')||null, periodo_inicio: g('hp-ini')||null, periodo_fim: g('hp-fim')||null,
+    nome: nome, cpf: g('hp-cpf')||null, funcao: g('hp-funcao'), nivel: g('hp-nivel'), ch: ch, valor_hora: vh,
+    valor_total: Math.round(ch*vh*100)/100, empenho: g('hp-ne')||null, liquidacao: g('hp-nl')||null,
+    ordem_bancaria: g('hp-ob')||null, data_pagamento: g('hp-data')||null, processo_pagamento: g('hp-proc')||null,
+    status: g('hp-status'), obs: g('hp-obs')||null
+  };
+  var id = g('hp-id');
+  try {
+    var r = id ? await sb.from('horaaula_pagamentos').update(payload).eq('id', id)
+               : await sb.from('horaaula_pagamentos').insert(payload);
+    if (r.error) throw r.error;
+    fecharModal('m-ha-pag');
+    await carregarCursos();
+    renderHoraAula();
+    renderDetalheCurso();
+    showToast(id?'Lançamento atualizado!':'Lançamento incluído!');
+  } catch(e) { showToast('Erro ao salvar: '+(e.message||e),'error'); console.error(e); }
+}
+
+async function excluirHaPag(id) {
+  if (!confirm('Excluir este lançamento?')) return;
+  await sb.from('horaaula_pagamentos').delete().eq('id', id);
+  await carregarCursos();
+  renderHoraAula();
+  renderDetalheCurso();
+  showToast('Lançamento excluído.');
+}
+
+// ── Lançar turma inteira ──
+function abrirModalHaTurma() {
+  var c = CURSOS.find(function(x){return x.id===CURSO_ABERTO;}) || {};
+  if (!(c.profissionais||[]).length) { showToast('Cadastre os profissionais no processo (Editar processo → Profissionais).','error'); return; }
+  var turmas = {}; pagsDoCurso(c.id).forEach(function(p){ if (/^turma\s*\d+/i.test(p.turma||'')) turmas[p.turma]=1; });
+  document.getElementById('ht-turma').value = 'Turma '+(Object.keys(turmas).length+1);
+  document.getElementById('ht-ch').value = c.carga_horaria||40;
+  document.getElementById('ht-ini').value = '';
+  document.getElementById('ht-fim').value = '';
+  document.getElementById('ht-status').value = 'previsto';
+  document.getElementById('ht-proc').value = '';
+  renderPreviewHaTurma();
+  abrirModal('m-ha-turma');
+}
+
+function renderPreviewHaTurma() {
+  var c = CURSOS.find(function(x){return x.id===CURSO_ABERTO;}) || {};
+  var ch = parseFloat(document.getElementById('ht-ch').value)||0, tot = 0;
+  var linhas = (c.profissionais||[]).map(function(p){
+    var vh = valorHoraHA(p.funcao, p.nivel), v = vh*ch; tot += v;
+    return '<tr><td>'+escDP(p.nome)+'</td><td>'+escDP(FUNCAO_LABELS[p.funcao]||p.funcao)+'</td><td style="text-align:right">'+fmtMoeda(vh)+'</td><td style="text-align:right;font-weight:600">'+fmtMoeda(v)+'</td></tr>';
+  }).join('');
+  document.getElementById('ht-preview').innerHTML =
+    '<table style="width:100%;font-size:12px"><thead><tr><th>Profissional</th><th>Função</th><th style="text-align:right">Valor/h</th><th style="text-align:right">Valor</th></tr></thead><tbody>'+linhas+'</tbody>'+
+    '<tfoot><tr><td colspan="3" style="font-weight:700">Total da turma</td><td style="text-align:right;font-weight:700;color:#0a6640">'+fmtMoeda(tot)+'</td></tr></tfoot></table>';
+}
+
+async function salvarHaTurma() {
+  var c = CURSOS.find(function(x){return x.id===CURSO_ABERTO;}) || {};
+  var turma = document.getElementById('ht-turma').value.trim();
+  if (!turma) { showToast('Informe o nome da turma.','error'); return; }
+  var ch = parseFloat(document.getElementById('ht-ch').value)||0;
+  var linhas = (c.profissionais||[]).map(function(p){
+    var vh = valorHoraHA(p.funcao, p.nivel);
+    return { curso_id:c.id, turma:turma, periodo_inicio:document.getElementById('ht-ini').value||null,
+      periodo_fim:document.getElementById('ht-fim').value||null, nome:p.nome, funcao:p.funcao, nivel:p.nivel||null,
+      ch:ch, valor_hora:vh, valor_total:Math.round(vh*ch*100)/100, status:document.getElementById('ht-status').value,
+      processo_pagamento:document.getElementById('ht-proc').value.trim()||null };
+  });
+  try {
+    var r = await sb.from('horaaula_pagamentos').insert(linhas);
+    if (r.error) throw r.error;
+    fecharModal('m-ha-turma');
+    await carregarCursos();
+    renderHoraAula();
+    renderDetalheCurso();
+    showToast(turma+' lançada! Edite cada linha para informar CPF, empenho e pagamento.');
+  } catch(e) { showToast('Erro ao lançar: '+(e.message||e),'error'); console.error(e); }
+}
 
 verificarSessao();
 </script>
