@@ -589,13 +589,13 @@ tr:hover td{background:#f8fafc}
         <!-- EMPENHOS -->
         <div id="fin-painel-empenhos">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-            <input type="text" id="fin-busca-emp" placeholder="Buscar empenho..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:260px" oninput="renderEmpenhos()">
+            <input type="text" id="fin-busca-emp" placeholder="Buscar empenho, PRODOC, SIGA ou credor..." style="padding:7px 12px;border:1px solid #ccc;border-radius:7px;font-size:12px;width:260px" oninput="renderEmpenhos()">
           </div>
           <div class="card" style="padding:0">
             <div class="table-wrap">
               <table>
                 <thead><tr>
-                  <th>Nº Documento</th><th>UG</th><th>Credor</th><th>Processo</th><th>Conta</th><th>Eixo</th><th>ND</th>
+                  <th>Nº Documento</th><th>UG</th><th>Credor</th><th>Processo (PRODOC)</th><th>Conta</th><th>Eixo</th><th>ND</th>
                   <th style="text-align:right">Valor</th><th>Data</th><th>Situação</th><th></th>
                 </tr></thead>
                 <tbody id="tb-empenhos-fin"></tbody>
@@ -3581,10 +3581,36 @@ async function excluirConta(id) {
   } catch(e) { showToast('Erro ao excluir conta.','error'); }
 }
 
+// Identificação do processo de um empenho, priorizando o número PRODOC.
+// O vínculo continua sendo feito pelo campo processo_siga; aqui só se resolve o PRODOC para exibição/busca.
+var RE_PRODOC = /\d{4}\.\d{4}\.\d{4}\.\d{4,5}\/\d{4}/;
+function procEmpenho(e) {
+  var chave = e.processo_siga||'';
+  var out = { prodoc:'', siga:'', chave:chave };
+  if (!chave) return out;
+  var p = (typeof processos!=='undefined') ? processos.find(function(x){ return x.siga===chave; }) : null;
+  var mP = p && (p.prodoc||'').match(RE_PRODOC);
+  var mC = chave.match(RE_PRODOC);
+  if (mP) out.prodoc = mP[0]; else if (mC) out.prodoc = mC[0];
+  if (!mC) out.siga = chave;                       // a chave é um número SIGA
+  else if (p && p.siga && !RE_PRODOC.test(p.siga)) out.siga = p.siga;
+  return out;
+}
+function htmlProcEmpenho(e) {
+  var pr = procEmpenho(e);
+  if (!pr.chave) return '—';
+  if (pr.chave==='Não aplicável') return '<span style="color:#888">Não aplicável</span>';
+  if (pr.prodoc) return '<div style="font-weight:600;color:#1a3a5c;white-space:nowrap">'+pr.prodoc+'</div>'+
+    (pr.siga?'<div style="font-size:10px;color:#888;white-space:nowrap">SIGA '+pr.siga+'</div>':'');
+  return '<div style="white-space:nowrap">SIGA '+pr.siga+'</div><div style="font-size:10px;color:#b45309">PRODOC não informado</div>';
+}
+
 function renderEmpenhos(filtroContaId) {
   var busca = (document.getElementById('fin-busca-emp')||{value:''}).value.toLowerCase();
   var lista = EMPENHOS_FIN.filter(function(e){
-    var ok = !busca || (e.numero||'').toLowerCase().indexOf(busca)>-1 || (e.processo_siga||'').toLowerCase().indexOf(busca)>-1;
+    var pr = procEmpenho(e);
+    var ok = !busca || (e.numero||'').toLowerCase().indexOf(busca)>-1 || (e.processo_siga||'').toLowerCase().indexOf(busca)>-1 ||
+      pr.prodoc.toLowerCase().indexOf(busca)>-1 || (e.credor||'').toLowerCase().indexOf(busca)>-1;
     if (filtroContaId) ok = ok && e.conta_id === filtroContaId;
     return ok;
   });
@@ -3605,7 +3631,7 @@ function renderEmpenhos(filtroContaId) {
       '<td style="font-weight:600;color:#1a3a5c">'+(e.numero||'—')+'</td>'+
       '<td style="font-size:12px">'+(e.ug?'<span class=\"tag\" style=\"background:'+(e.ug==='FUNSEP'?'#d1fae5;color:#065f46':'#dbeafe;color:#1e40af')+'\">'+e.ug+'</span>':'—')+'</td>'+
       '<td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(e.credor||'')+'">'+(e.credor||'—')+'</td>'+
-      '<td style="font-size:12px;color:#555">'+(e.processo_siga||'—')+'</td>'+
+      '<td style="font-size:12px;color:#555">'+htmlProcEmpenho(e)+'</td>'+
       '<td style="font-size:12px">'+(conta?conta.numero:'—')+'</td>'+
       '<td><span class="tag" style="background:#0e749022;color:#0e7490;font-weight:700">'+(conta?conta.eixo:'—')+'</span></td>'+
       '<td style="font-size:12px">'+(conta?'ND '+conta.nd:'—')+'</td>'+
@@ -3692,7 +3718,12 @@ async function abrirModalEmpenho(id) {
   var selProc = document.getElementById('emp-fin-processo');
   selProc.innerHTML = '<option value="">Selecionar processo...</option>'+
                        '<option value="nao_aplicavel">Não aplicável (sem processo a vincular)</option>';
-  processos.forEach(function(p){ selProc.innerHTML += '<option value="'+p.siga+'">'+(p.siga||'Sem SIGA')+' — '+p.objeto.substring(0,50)+'</option>'; });
+  processos.forEach(function(p){
+    var pd = (p.prodoc||'').match(RE_PRODOC); pd = pd ? pd[0] : '';
+    var sg = (p.siga && !RE_PRODOC.test(p.siga)) ? p.siga : '';
+    var rot = pd ? ('PRODOC '+pd+(sg?' (SIGA '+sg+')':'')) : (sg ? 'SIGA '+sg+' (sem PRODOC)' : (p.siga||'Sem número'));
+    selProc.innerHTML += '<option value="'+p.siga+'">'+rot+' — '+(p.objeto||'').substring(0,50)+'</option>';
+  });
 
   // Popular select de contas
   var selConta = document.getElementById('emp-fin-conta');
@@ -3711,6 +3742,11 @@ async function abrirModalEmpenho(id) {
       document.getElementById('emp-fin-ug').value       = e.ug||'FUNSEP';
       document.getElementById('emp-fin-credor').value   = e.credor||'';
       document.getElementById('emp-fin-tipo').value     = e.tipo_empenho||'Ordinário';
+      if (e.processo_siga && e.processo_siga!=='Não aplicável' && !processos.some(function(x){return x.siga===e.processo_siga;})) {
+        var optX = document.createElement('option'); optX.value = e.processo_siga;
+        optX.textContent = (RE_PRODOC.test(e.processo_siga)?'PRODOC ':'')+e.processo_siga+' — (processo de diárias / fora do cadastro de processos)';
+        selProc.appendChild(optX);
+      }
       document.getElementById('emp-fin-processo').value = (e.processo_siga==='Não aplicável') ? 'nao_aplicavel' : (e.processo_siga||'');
       document.getElementById('emp-fin-conta').value    = e.conta_id||'';
       document.getElementById('emp-fin-valor').value    = e.valor||'';
