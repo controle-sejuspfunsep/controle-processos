@@ -307,7 +307,32 @@ tr:hover td{background:#f8fafc}
           <div id="lista-avisos"></div>
         </div>
 
-        <!-- Cards resumo -->
+        <!-- Visão geral dos processos por núcleo -->
+        <div class="card" id="vg-card" style="padding:18px;margin-bottom:18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            <div class="sec-label" style="margin:0;border:none;padding:0"><i class="ti ti-layout-grid"></i> Visão geral dos processos do órgão</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <select id="vg-ug" onchange="renderVisaoGeral(false)" style="width:auto;font-size:12px;padding:6px 10px;border:1px solid #ddd;border-radius:6px;background:#fff">
+                <option value="">FUNSEP e SEJUSP</option><option value="FUNSEP">Somente FUNSEP</option><option value="SEJUSP">Somente SEJUSP</option>
+              </select>
+              <div id="vg-sit" style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden"></div>
+            </div>
+          </div>
+          <div id="vg-resumo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+            <div id="vg-titulo" style="font-weight:700;color:#1a3a5c;font-size:14px"></div>
+            <input type="text" id="vg-busca" placeholder="Buscar processo, credor, empresa..." oninput="renderVisaoGeral(false)" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;width:240px">
+          </div>
+          <div class="table-wrap" style="border:1px solid #eee;border-radius:8px;max-height:420px;overflow:auto">
+            <table>
+              <thead><tr><th>Tipo</th><th>Processo</th><th>Descrição</th><th>UG</th><th style="text-align:right">Valor</th><th>Situação</th><th></th></tr></thead>
+              <tbody id="vg-tb"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Processos cadastrados (aba Processos) -->
+        <div class="sec-label" style="margin-bottom:10px"><i class="ti ti-files"></i> Processos cadastrados — aba Processos</div>
         <div class="metrics" id="metrics-box"></div>
 
         <!-- Gráficos -->
@@ -2183,6 +2208,7 @@ async function iniciarApp() {
   renderDashboard();
   renderAvisos();
   renderTable();
+  renderVisaoGeral();
   ativarRealtime();
 }
 
@@ -2532,7 +2558,7 @@ function showPage(id, el) {
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   document.getElementById('page-'+id).classList.add('active');
   if (el) el.classList.add('active');
-  if (id==='dashboard') { renderDashboard(); renderAvisos(); }
+  if (id==='dashboard') { renderDashboard(); renderAvisos(); renderVisaoGeral(); }
   if (id==='processos') renderTable();
   if (id==='usuarios')  carregarUsuarios();
   if (id==='fluxograma') renderFluxograma();
@@ -7816,6 +7842,157 @@ function gerarExtratoContasFin(formato) {
     corpo+'</body></html>');
   win.document.close();
   setTimeout(function(){ win.print(); }, 600);
+}
+
+
+// ════════════════════════════════════════════════
+// DASHBOARD — VISÃO GERAL DOS PROCESSOS POR NÚCLEO
+// ════════════════════════════════════════════════
+var VG_NUCLEO = 'adm';
+var VG_SIT = 'ativos';
+var VG_CARREGADO = false;
+
+var VG_NUCLEOS = {
+  adm: { nome:'Núcleo Administrativo', icon:'ti-school', cor:'#6d28d9', bg:'#ede9fe' },
+  fin: { nome:'Núcleo Financeiro', icon:'ti-building-bank', cor:'#065f46', bg:'#d1fae5' },
+  cont:{ nome:'Núcleo de Contratos e Convênios', icon:'ti-file-certificate', cor:'#1e40af', bg:'#dbeafe' }
+};
+
+function itensVisaoGeral() {
+  var itens = [];
+  // ── Administrativo: pagamentos, diárias e hora-aula
+  (PAGAMENTOS||[]).forEach(function(p){
+    itens.push({ nucleo:'adm', tipo:'Pagamento', ref: p.prodoc || p.processo_vinculado || '—',
+      desc: [p.beneficiario, p.descricao].filter(Boolean).join(' — '), ug: p.orgao || 'FUNSEP', valor: parseFloat(p.valor||0),
+      sit: (typeof PAG_STATUS_L!=='undefined' && PAG_STATUS_L[p.status]) || p.status,
+      estado: p.status==='pago' ? 'concluido' : p.status==='cancelado' ? 'cancelado' : 'ativo',
+      abrir: "vgAbrir('pag','"+p.id+"')" });
+  });
+  (DIARIAS_PROC||[]).forEach(function(p){
+    var t = totaisProcDiaria(diariasDoProc(p.id));
+    itens.push({ nucleo:'adm', tipo:'Diárias', ref: p.prodoc || '—', desc: (p.evento||'')+(p.destino?' — '+p.destino:'')+' ('+t.servidores+' servidor(es))',
+      ug: p.orgao || 'FUNSEP', valor: t.valor, sit: (DP_STATUS[p.status]||{l:p.status}).l,
+      estado: p.status==='concluido' ? 'concluido' : p.status==='cancelado' ? 'cancelado' : 'ativo',
+      abrir: "vgAbrir('diaria','"+p.id+"')" });
+  });
+  (CURSOS||[]).forEach(function(c){
+    var t = totaisCursoHA(c.id);
+    itens.push({ nucleo:'adm', tipo:'Hora-aula', ref: c.prodoc || '—', desc: c.nome + (t.pago ? ' — pago '+fmtMoeda(t.pago) : ''),
+      ug: c.orgao || 'FUNSEP', valor: parseFloat(c.valor_estimado||0), sit: HA_STATUS_LABELS[c.status] || c.status,
+      estado: c.status==='concluido' ? 'concluido' : c.status==='cancelado' ? 'cancelado' : 'ativo',
+      abrir: "vgAbrir('curso','"+c.id+"')" });
+  });
+  // ── Financeiro: empenhos agrupados por processo
+  var grupos = {};
+  (EMPENHOS_FIN||[]).forEach(function(e){
+    if (e.situacao==='anulado') return;
+    var pr = procEmpenho(e);
+    var chave = ugEmpenho(e)+'|'+(pr.chave || e.processo_siga || e.numero);
+    var g = grupos[chave] = grupos[chave] || { ug:ugEmpenho(e), ref: pr.prodoc ? pr.prodoc : (pr.siga ? 'SIGA '+pr.siga : (e.processo_siga||'—')), busca: pr.prodoc || pr.siga || e.processo_siga || e.numero, credores:{}, n:0, valor:0, liq:0 };
+    g.n++; g.valor += parseFloat(e.valor||0); g.liq += liqEmpenho(e);
+    if (e.credor) g.credores[e.credor] = 1;
+  });
+  Object.keys(grupos).forEach(function(k){
+    var g = grupos[k], cred = Object.keys(g.credores);
+    var aliq = g.valor - g.liq;
+    itens.push({ nucleo:'fin', tipo: g.n+' empenho(s)', ref: g.ref,
+      desc: cred.slice(0,2).join(', ')+(cred.length>2?' e mais '+(cred.length-2):'')+' — liquidado '+fmtMoeda(g.liq),
+      ug: g.ug, valor: g.valor, sit: aliq>0.01 ? (g.liq>0.01 ? 'Liquidado parcial' : 'A liquidar') : 'Liquidado',
+      estado: aliq>0.01 ? 'ativo' : 'concluido',
+      abrir: "vgAbrir('fin','"+String(g.busca).replace(/'/g,'')+"','"+g.ug+"')" });
+  });
+  // ── Contratos
+  (CONTRATOS||[]).forEach(function(c){
+    var fim = c.vigencia_fim ? ' — vigência até '+fmtDataBR(c.vigencia_fim) : '';
+    itens.push({ nucleo:'cont', tipo: c.tipo==='servico' ? 'Contrato (serviço)' : 'Contrato (aquisição)', ref: 'Nº '+(c.numero||'—'),
+      desc: (c.empresa||'')+fim, ug: c.orgao || 'FUNSEP', valor: parseFloat(c.valor||0),
+      sit: {vigente:'Vigente', em_renovacao:'Em renovação', encerrado:'Encerrado', rescindido:'Rescindido'}[c.status] || c.status,
+      estado: (c.status==='vigente'||c.status==='em_renovacao') ? 'ativo' : 'concluido',
+      abrir: "vgAbrir('cont','"+c.id+"','"+(c.orgao||'FUNSEP')+"')" });
+  });
+  return itens;
+}
+
+async function renderVisaoGeral(recarregar) {
+  if (recarregar !== false || !VG_CARREGADO) {
+    try {
+      await Promise.all([carregarPagamentos(), carregarDiarias(), carregarCursos(), carregarFinanceiro(), carregarContratos()]);
+      VG_CARREGADO = true;
+    } catch(e) { console.warn('Visão geral:', e); }
+  }
+  var ugSel = (document.getElementById('vg-ug')||{value:''}).value;
+  var busca = ((document.getElementById('vg-busca')||{value:''}).value||'').toLowerCase();
+  var todos = itensVisaoGeral().filter(function(i){ return !ugSel || i.ug===ugSel; });
+
+  // Resumo por núcleo
+  document.getElementById('vg-resumo').innerHTML = ['adm','fin','cont'].map(function(n){
+    var N = VG_NUCLEOS[n], l = todos.filter(function(i){return i.nucleo===n;});
+    var at = l.filter(function(i){return i.estado==='ativo';}), co = l.filter(function(i){return i.estado==='concluido';});
+    var vAt = at.reduce(function(s,i){return s+i.valor;},0);
+    var on = VG_NUCLEO===n;
+    return '<div onclick="VG_NUCLEO=\''+n+'\';renderVisaoGeral(false)" style="cursor:pointer;border-radius:12px;padding:14px 16px;border:2px solid '+(on?N.cor:'#e5e7eb')+';background:'+(on?N.bg:'#fff')+'">'+
+      '<div style="font-size:13px;font-weight:800;color:'+N.cor+';margin-bottom:8px"><i class="ti '+N.icon+'"></i> '+N.nome+'</div>'+
+      '<div style="display:flex;gap:18px;align-items:flex-end">'+
+        '<div><div style="font-size:24px;font-weight:800;color:#1a3a5c;line-height:1">'+at.length+'</div><div style="font-size:11px;color:#666">ativos</div></div>'+
+        '<div><div style="font-size:24px;font-weight:800;color:#166534;line-height:1">'+co.length+'</div><div style="font-size:11px;color:#666">concluídos</div></div>'+
+        '<div style="margin-left:auto;text-align:right"><div style="font-size:13px;font-weight:700;color:#1a3a5c">'+fmtMoeda(vAt)+'</div><div style="font-size:10px;color:#888">em processos ativos</div></div>'+
+      '</div></div>';
+  }).join('');
+
+  // Botões de situação
+  var sits = [['ativos','Ativos'],['concluidos','Concluídos'],['todos','Todos']];
+  document.getElementById('vg-sit').innerHTML = sits.map(function(s){
+    var on = VG_SIT===s[0];
+    return '<button onclick="VG_SIT=\''+s[0]+'\';renderVisaoGeral(false)" style="border:none;padding:6px 12px;font-size:12px;cursor:pointer;background:'+(on?'#1a3a5c':'#fff')+';color:'+(on?'#fff':'#555')+';font-weight:'+(on?'700':'400')+'">'+s[1]+'</button>';
+  }).join('');
+
+  // Lista
+  var lista = todos.filter(function(i){
+    if (i.nucleo!==VG_NUCLEO) return false;
+    if (VG_SIT==='ativos' && i.estado!=='ativo') return false;
+    if (VG_SIT==='concluidos' && i.estado!=='concluido') return false;
+    if (busca && [i.ref,i.desc,i.tipo].join(' ').toLowerCase().indexOf(busca)<0) return false;
+    return true;
+  }).sort(function(a,b){ return a.ug===b.ug ? (b.valor-a.valor) : (a.ug<b.ug?-1:1); });
+  var lbl = {ativos:'ativos', concluidos:'concluídos', todos:''}[VG_SIT];
+  document.getElementById('vg-titulo').textContent = VG_NUCLEOS[VG_NUCLEO].nome+' — '+lista.length+' processo(s) '+lbl;
+  var corEst = { ativo:['#dbeafe','#1e40af'], concluido:['#dcfce7','#166534'], cancelado:['#f3f4f6','#6b7280'] };
+  var tb = document.getElementById('vg-tb');
+  if (!lista.length) { tb.innerHTML = '<tr><td colspan="7"><div class="empty"><i class="ti ti-folder-off"></i><p>Nenhum processo nesta seleção.</p></div></td></tr>'; return; }
+  tb.innerHTML = lista.map(function(i){
+    var c = corEst[i.estado]||corEst.ativo;
+    return '<tr style="cursor:pointer" onclick="'+i.abrir+'">'+
+      '<td style="font-size:12px;white-space:nowrap">'+escDP(i.tipo)+'</td>'+
+      '<td style="font-weight:600;white-space:nowrap;color:#1a3a5c">'+escDP(i.ref)+'</td>'+
+      '<td style="font-size:12px;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escDP(i.desc)+'">'+escDP(i.desc||'—')+'</td>'+
+      '<td><span class="tag" style="background:'+(i.ug==='SEJUSP'?'#dbeafe;color:#1e40af':'#d1fae5;color:#065f46')+'">'+escDP(i.ug)+'</span></td>'+
+      '<td style="text-align:right;font-weight:600;white-space:nowrap">'+fmtMoeda(i.valor)+'</td>'+
+      '<td><span style="background:'+c[0]+';color:'+c[1]+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">'+escDP(i.sit)+'</span></td>'+
+      '<td style="text-align:right"><button class="btn-icon" title="Abrir no núcleo"><i class="ti ti-arrow-right"></i></button></td></tr>';
+  }).join('');
+}
+
+// Abre o processo no respectivo núcleo
+function vgAbrir(tipo, id, ug) {
+  if (tipo==='pag' || tipo==='diaria' || tipo==='curso') {
+    showPage('adm', document.getElementById('nav-adm'));
+    var aba = tipo==='pag' ? 'pagamento' : tipo==='diaria' ? 'diaria' : 'hora-aula';
+    admTab(aba);
+    setTimeout(function(){
+      if (tipo==='pag') abrirModalPagamento(id);
+      else if (tipo==='diaria') abrirDetalheProcDiaria(id);
+      else abrirDetalheCurso(id);
+    }, 400);
+  } else if (tipo==='fin') {
+    FIN_UG = ug || 'FUNSEP';
+    showPage('financeiro', document.getElementById('nav-financeiro'));
+    var b = document.getElementById('fin-busca-emp'); if (b) b.value = id;
+    setTimeout(function(){ finTab('empenhos'); }, 400);
+  } else if (tipo==='cont') {
+    CONT_UG = ug || 'FUNSEP';
+    showPage('contratos', document.getElementById('nav-contratos'));
+    setTimeout(function(){ verDetalheContrato(id); }, 500);
+  }
 }
 
 verificarSessao();
