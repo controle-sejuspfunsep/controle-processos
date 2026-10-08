@@ -8017,8 +8017,7 @@ function renderTiposVisaoGeral(ugSel) {
   }).join('');
   var semTipo = procs.filter(function(p){return !tipoObjetoProcesso(p);}).length;
   document.getElementById('vg-tipos-nota').innerHTML =
-    'Aquisição e serviço vêm da aba Processos (tipo "Compras" = aquisição; "Serviços" = serviço; adesões e contratações diretas pela natureza: investimento = aquisição, custeio = serviço). Diária e hora-aula vêm do Núcleo Administrativo.'+
-    (semTipo ? ' <b style="color:#b45309">'+semTipo+' processo(s) sem tipo/natureza definidos não entraram na contagem.</b>' : '');
+    semTipo ? '<span style="color:#b45309"><i class="ti ti-alert-triangle"></i> '+semTipo+' processo(s) sem tipo ou natureza informados não entraram na contagem.</span>' : '';
 }
 
 // Abre o processo no respectivo núcleo
