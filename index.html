@@ -5491,7 +5491,7 @@ var VALORES_HA = {
   monitor: 50,
   supervisor: 40,
   coordenador: 50,
-  conferencista: 100 // sem nível definido — usa graduação como base
+  conferencista: 240 // valor fixo por hora-aula (Anexo II)
 };
 
 var FUNCAO_LABELS = {
@@ -5734,7 +5734,7 @@ function renderProfissionais() {
               return '<option value="'+f+'"'+(p.funcao===f?' selected':'')+'>'+FUNCAO_LABELS[f]+'</option>';
             }).join('')+
           '</select></div>'+
-        (p.funcao==='docente'||p.funcao==='conferencista' ?
+        (p.funcao==='docente' ?
         '<div class="form-group" style="margin:0"><label>Nível</label>'+
           '<select class="form-input" style="padding:7px 10px" onchange="profissionaisTemp['+i+'].nivel=this.value;renderProfissionais()">'+
             [['fundamental','Fundamental'],['medio','Médio'],['graduacao','Graduação'],
@@ -5757,7 +5757,7 @@ function calcularValorProf(p) {
   var ch = parseInt(p.ch)||0;
   if (!ch) return 0;
   var vlrH = 0;
-  if (p.funcao==='docente'||p.funcao==='conferencista') {
+  if (p.funcao==='docente') {
     vlrH = VALORES_HA.docente[p.nivel||'graduacao']||100;
   } else {
     vlrH = VALORES_HA[p.funcao]||50;
@@ -5808,7 +5808,7 @@ function renderCalculo() {
   var linhas = profissionaisTemp.filter(function(p){return p.nome&&p.ch>0;}).map(function(p){
     var vlr = calcularValorProf(p);
     totalGeral += vlr;
-    var vlrH = p.funcao==='docente'||p.funcao==='conferencista' ? VALORES_HA.docente[p.nivel||'graduacao'] : VALORES_HA[p.funcao]||50;
+    var vlrH = p.funcao==='docente' ? VALORES_HA.docente[p.nivel||'graduacao'] : VALORES_HA[p.funcao]||50;
     return '<tr>'+
       '<td style="padding:8px 10px;font-size:13px">'+(p.nome||'—')+'</td>'+
       '<td style="padding:8px 10px;font-size:12px">'+(FUNCAO_LABELS[p.funcao]||p.funcao)+'</td>'+
@@ -7462,7 +7462,7 @@ function renderDetalheCurso() {
     html += '<tr'+(canc?' style="opacity:.6"':'')+'>'+
       '<td style="font-weight:500;min-width:170px"'+(p.obs?' title="'+escDP(p.obs)+'"':'')+'>'+escDP(p.nome)+(p.obs?' <i class="ti ti-info-circle" style="color:#888;font-size:12px"></i>':'')+
         '<div style="font-size:10px;color:#888">'+escDP(p.cpf||'')+'</div></td>'+
-      '<td style="font-size:12px">'+escDP(FUNCAO_LABELS[p.funcao]||p.funcao||'—')+(p.nivel&&(p.funcao==='docente'||p.funcao==='conferencista')?'<div style="font-size:10px;color:#888">'+escDP(NIVEL_HA_LABELS[p.nivel]||p.nivel)+'</div>':'')+'</td>'+
+      '<td style="font-size:12px">'+escDP(FUNCAO_LABELS[p.funcao]||p.funcao||'—')+(p.nivel&&p.funcao==='docente'?'<div style="font-size:10px;color:#888">'+escDP(NIVEL_HA_LABELS[p.nivel]||p.nivel)+'</div>':'')+'</td>'+
       '<td style="text-align:center;font-weight:600">'+(parseFloat(p.ch||0))+'h</td>'+
       '<td style="text-align:right;font-size:12px;white-space:nowrap">'+fmtMoeda(p.valor_hora||0)+'</td>'+
       '<td style="text-align:right;font-weight:700;white-space:nowrap;color:#1a3a5c'+(canc?';text-decoration:line-through':'')+'">'+fmtMoeda(p.valor_total||0)+'</td>'+
