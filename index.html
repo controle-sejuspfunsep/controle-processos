@@ -318,6 +318,10 @@ tr:hover td{background:#f8fafc}
               <div id="vg-sit" style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden"></div>
             </div>
           </div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Total de processos por tipo</div>
+          <div id="vg-tipos" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:6px"></div>
+          <div id="vg-tipos-nota" style="font-size:11px;color:#888;margin-bottom:16px"></div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Por núcleo</div>
           <div id="vg-resumo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
             <div id="vg-titulo" style="font-weight:700;color:#1a3a5c;font-size:14px"></div>
@@ -7924,6 +7928,9 @@ async function renderVisaoGeral(recarregar) {
   var busca = ((document.getElementById('vg-busca')||{value:''}).value||'').toLowerCase();
   var todos = itensVisaoGeral().filter(function(i){ return !ugSel || i.ug===ugSel; });
 
+  // Totais por tipo de processo
+  renderTiposVisaoGeral(ugSel);
+
   // Resumo por núcleo
   document.getElementById('vg-resumo').innerHTML = ['adm','fin','cont'].map(function(n){
     var N = VG_NUCLEOS[n], l = todos.filter(function(i){return i.nucleo===n;});
@@ -7970,6 +7977,48 @@ async function renderVisaoGeral(recarregar) {
       '<td><span style="background:'+c[0]+';color:'+c[1]+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">'+escDP(i.sit)+'</span></td>'+
       '<td style="text-align:right"><button class="btn-icon" title="Abrir no núcleo"><i class="ti ti-arrow-right"></i></button></td></tr>';
   }).join('');
+}
+
+// Classifica os processos da aba Processos em aquisição ou serviço
+function tipoObjetoProcesso(p) {
+  var t = (p.tipo||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  var n = (p.natureza||'').toLowerCase();
+  if (t.indexOf('compra')>-1) return 'aquisicao';
+  if (t.indexOf('servic')>-1) return 'servico';
+  if (n.indexOf('invest')>-1) return 'aquisicao';
+  if (n.indexOf('custeio')>-1) return 'servico';
+  return null;
+}
+
+function renderTiposVisaoGeral(ugSel) {
+  var el = document.getElementById('vg-tipos'); if (!el) return;
+  var procs = (processos||[]).filter(function(p){ return !ugSel || (p.orgao||'FUNSEP')===ugSel; });
+  var est = function(s){ return s==='concluido' ? 'concluido' : s==='cancelado' ? 'cancelado' : 'ativo'; };
+  var base = {
+    aquisicao: procs.filter(function(p){return tipoObjetoProcesso(p)==='aquisicao';}).map(function(p){return est(p.status);}),
+    servico:   procs.filter(function(p){return tipoObjetoProcesso(p)==='servico';}).map(function(p){return est(p.status);}),
+    diaria:    (DIARIAS_PROC||[]).filter(function(p){return !ugSel || (p.orgao||'FUNSEP')===ugSel;}).map(function(p){return est(p.status);}),
+    horaaula:  (CURSOS||[]).filter(function(c){return !ugSel || (c.orgao||'FUNSEP')===ugSel;}).map(function(c){return est(c.status);})
+  };
+  var cards = [
+    ['aquisicao','Aquisição','ti-shopping-cart','#b45309','#fef3c7'],
+    ['servico','Serviço','ti-tool','#0e7490','#cffafe'],
+    ['diaria','Diária','ti-plane','#7c3aed','#ede9fe'],
+    ['horaaula','Hora-aula','ti-school','#be123c','#ffe4e6']
+  ];
+  el.innerHTML = cards.map(function(c){
+    var l = base[c[0]];
+    var at = l.filter(function(x){return x==='ativo';}).length, co = l.filter(function(x){return x==='concluido';}).length, ca = l.filter(function(x){return x==='cancelado';}).length;
+    return '<div style="border-radius:12px;padding:12px 14px;background:'+c[4]+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div style="font-size:13px;font-weight:800;color:'+c[3]+'"><i class="ti '+c[2]+'"></i> '+c[1]+'</div>'+
+        '<div style="font-size:26px;font-weight:800;color:'+c[3]+';line-height:1">'+l.length+'</div></div>'+
+      '<div style="font-size:11px;color:#555;margin-top:6px">'+at+' ativo(s) · '+co+' concluído(s)'+(ca?' · '+ca+' cancelado(s)':'')+'</div></div>';
+  }).join('');
+  var semTipo = procs.filter(function(p){return !tipoObjetoProcesso(p);}).length;
+  document.getElementById('vg-tipos-nota').innerHTML =
+    'Aquisição e serviço vêm da aba Processos (tipo "Compras" = aquisição; "Serviços" = serviço; adesões e contratações diretas pela natureza: investimento = aquisição, custeio = serviço). Diária e hora-aula vêm do Núcleo Administrativo.'+
+    (semTipo ? ' <b style="color:#b45309">'+semTipo+' processo(s) sem tipo/natureza definidos não entraram na contagem.</b>' : '');
 }
 
 // Abre o processo no respectivo núcleo
