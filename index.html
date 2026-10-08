@@ -95,7 +95,8 @@ tr:hover td{background:#f8fafc}
 .login-tab{flex:1;text-align:center;padding:8px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;color:#888;transition:all .2s}
 .login-tab.active{background:#fff;color:#1a3a5c;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.1)}
 .filter-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-.filter-bar select,.filter-bar input{font-size:12px;padding:7px 10px;min-width:140px}
+.filter-bar select,.filter-bar input{font-size:12px;padding:7px 10px;min-width:140px;width:auto}
+.filter-bar > input{flex:1 1 260px}
 .empty{text-align:center;padding:40px;color:#aaa;font-size:13px}
 .btn-icon{background:none;border:none;cursor:pointer;color:#aaa;padding:4px 6px;border-radius:5px}
 .btn-icon:hover{color:#1a3a5c;background:#eaf1fb}
@@ -274,7 +275,6 @@ tr:hover td{background:#f8fafc}
     <div class="sidebar">
       <div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
       <div class="nav-item" id="nav-fluxograma" onclick="showPage('fluxograma',this)"><i class="ti ti-git-branch"></i> Fluxograma</div>
-      <div class="nav-item" id="nav-processos" onclick="showPage('processos',this)"><i class="ti ti-files"></i> Processos</div>
       <div class="nav-item" id="nav-adm" onclick="showPage('adm',this)"><i class="ti ti-school"></i> 🎓 Núcleo Administrativo</div>
       <div class="nav-item" id="nav-financeiro" onclick="showPage('financeiro',this)"><i class="ti ti-building-bank"></i> Núcleo Financeiro</div>
       <div class="nav-item" id="nav-contratos" onclick="showPage('contratos',this)"><i class="ti ti-file-contract"></i> 📋 Núcleo de Contratos e Convênios <span id="badge-contratos" style="display:none;background:#c0392b;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px">!</span></div>
@@ -370,46 +370,6 @@ tr:hover td{background:#f8fafc}
         </div>
       </div>
 
-      <!-- PROCESSOS -->
-      <div id="page-processos" class="page">
-        <div class="section-header">
-          <span class="section-title">Processos</span>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn-secondary" onclick="abrirEscolhaRelatorio()" title="Relatório de processos SEJUSP e FUNSEP, em abas por ano de exercício e natureza (Investimento/Custeio)"><i class="ti ti-report"></i> Relatório</button>
-            <button class="btn-primary" onclick="showPage('novo', document.getElementById('nav-processos'));resetForm()"><i class="ti ti-plus"></i> Novo Processo</button>
-          </div>
-        </div>
-        <div class="filter-bar">
-          <input type="text" placeholder="Buscar por objeto, ofício, SIGA/PRODOC..." id="filter-search" oninput="renderTable()"/>
-          <select id="filter-ano" onchange="renderTable()"></select>
-          <select id="filter-orgao" onchange="renderTable()">
-            <option value="">Todos os órgãos</option>
-            <option>SEJUSP</option>
-            <option>FUNSEP</option>
-          </select>
-          <select id="filter-status" onchange="renderTable()">
-            <option value="">Todos os status</option>
-            <option value="em_andamento">Em andamento</option>
-            <option value="aguardando">Aguardando</option>
-            <option value="concluido">Concluído</option>
-            <option value="suspenso">Suspenso</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
-        </div>
-        <div class="card" style="padding:0">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>SIGA / PRODOC</th><th>PRODOC</th><th>Objeto</th><th>Órgão</th>
-                  <th>Tipo</th><th>Status</th><th>Ações</th>
-                </tr>
-              </thead>
-              <tbody id="processo-tbody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
 
       <!-- NOVO / EDITAR PROCESSO -->
       <div id="page-novo" class="page">
@@ -789,14 +749,55 @@ tr:hover td{background:#f8fafc}
 
         <!-- Abas internas -->
         <div style="display:flex;gap:0;border-bottom:2px solid #e0e0e0;margin-bottom:18px">
-          <button id="adm-tab-geral" onclick="admTab('geral')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;color:#1a3a5c;border-bottom:3px solid #1a3a5c;cursor:pointer;margin-bottom:-2px">Visão Geral</button>
+          <button id="adm-tab-siga" onclick="admTab('siga')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;color:#1a3a5c;border-bottom:3px solid #1a3a5c;cursor:pointer;margin-bottom:-2px">Processo SIGA</button>
           <button id="adm-tab-pagamento" onclick="admTab('pagamento')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Processos de Pagamento</button>
-          <button id="adm-tab-diaria" onclick="admTab('diaria')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Processos de Diária</button>
-          <button id="adm-tab-hora-aula" onclick="admTab('hora-aula')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Processos de Hora-Aula</button>
+          <button id="adm-tab-diaria" onclick="admTab('diaria')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Processos da Diária</button>
+          <button id="adm-tab-hora-aula" onclick="admTab('hora-aula')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:500;color:#888;cursor:pointer;margin-bottom:-2px">Processos de Hora-aula</button>
         </div>
 
-        <!-- VISÃO GERAL -->
-        <div id="adm-painel-geral">
+        <!-- PROCESSOS SIGA (antiga aba Processos) -->
+        <div id="adm-painel-siga">
+        <div class="section-header">
+          <span class="section-title" style="font-size:16px">Processos SIGA</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-secondary" onclick="abrirEscolhaRelatorio()" title="Relatório de processos SEJUSP e FUNSEP, em abas por ano de exercício e natureza (Investimento/Custeio)"><i class="ti ti-report"></i> Relatório</button>
+            <button class="btn-primary" onclick="showPage('novo', document.getElementById('nav-adm'));resetForm()"><i class="ti ti-plus"></i> Novo Processo</button>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <input type="text" placeholder="Buscar por objeto, ofício, SIGA/PRODOC..." id="filter-search" oninput="renderTable()"/>
+          <select id="filter-ano" onchange="renderTable()"></select>
+          <select id="filter-orgao" onchange="renderTable()">
+            <option value="">Todos os órgãos</option>
+            <option>SEJUSP</option>
+            <option>FUNSEP</option>
+          </select>
+          <select id="filter-status" onchange="renderTable()">
+            <option value="">Todos os status</option>
+            <option value="em_andamento">Em andamento</option>
+            <option value="aguardando">Aguardando</option>
+            <option value="concluido">Concluído</option>
+            <option value="suspenso">Suspenso</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div class="card" style="padding:0">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>SIGA / PRODOC</th><th>PRODOC</th><th>Objeto</th><th>Órgão</th>
+                  <th>Tipo</th><th>Status</th><th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="processo-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        </div>
+
+        <!-- VISÃO GERAL (aba oculta) -->
+        <div id="adm-painel-geral" style="display:none">
           <div class="metrics" id="adm-geral-metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px"></div>
           <div class="card" style="padding:16px">
             <div class="sec-label">Montante total por Unidade Gestora</div>
@@ -2558,6 +2559,8 @@ async function renderTable() {
 }
 
 function showPage(id, el) {
+  // A antiga aba "Processos" agora fica dentro do Núcleo Administrativo (aba Processo SIGA)
+  if (id==='processos') { admAbaAtiva = 'siga'; id = 'adm'; el = document.getElementById('nav-adm'); }
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   document.getElementById('page-'+id).classList.add('active');
@@ -2764,7 +2767,7 @@ async function salvarProcesso() {
     if (processoIdParaCredores) await salvarCredoresProcesso(processoIdParaCredores);
     await carregarProcessos();
     resetForm();
-    showPage('processos', document.getElementById('nav-processos'));
+    showPage('processos', document.getElementById('nav-adm'));
     renderDashboard(); renderTable();
   } catch(e) { showToast('Erro ao salvar processo: '+(e.message||''),'error'); console.error(e); }
 }
@@ -2788,7 +2791,7 @@ async function editarProcesso(id) {
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   var pageNovo = document.getElementById('page-novo');
   if (pageNovo) pageNovo.classList.add('active');
-  var navProcessosEl = document.getElementById('nav-processos');
+  var navProcessosEl = document.getElementById('nav-adm');
   if (navProcessosEl) navProcessosEl.classList.add('active');
 
   document.getElementById('form-title').textContent = 'Editar Processo';
@@ -3650,11 +3653,12 @@ function finTab(aba) {
 // ── ABAS NUCLEO ADMINISTRATIVO ──
 function admTab(aba) {
   admAbaAtiva = aba;
+  document.getElementById('adm-painel-siga').style.display      = aba==='siga'       ? 'block' : 'none';
   document.getElementById('adm-painel-geral').style.display     = aba==='geral'      ? 'block' : 'none';
   document.getElementById('adm-painel-pagamento').style.display = aba==='pagamento'  ? 'block' : 'none';
   document.getElementById('adm-painel-diaria').style.display    = aba==='diaria'     ? 'block' : 'none';
   document.getElementById('adm-painel-hora-aula').style.display = aba==='hora-aula'  ? 'block' : 'none';
-  ['geral','pagamento','diaria','hora-aula'].forEach(function(a){
+  ['siga','geral','pagamento','diaria','hora-aula'].forEach(function(a){
     var btn = document.getElementById('adm-tab-'+a);
     if (btn) {
       btn.style.color = aba===a?'#1a3a5c':'#888';
@@ -3662,7 +3666,8 @@ function admTab(aba) {
       btn.style.fontWeight = aba===a?'700':'500';
     }
   });
-  if (aba==='geral') renderAdmGeral();
+  if (aba==='siga') renderTable();
+  else if (aba==='geral') renderAdmGeral();
   else if (aba==='pagamento') renderPagamentos();
   else if (aba==='diaria') renderPessoal();
   else if (aba==='hora-aula') renderHoraAula();
@@ -5209,7 +5214,7 @@ var DIARIAS = [];
 var DIARIAS_PROC = [];
 var DIARIA_PROC_ABERTO = null;
 var PAGAMENTOS = [];
-var admAbaAtiva = 'geral';
+var admAbaAtiva = 'siga';
 
 // ════════════════════════════════════════════════
 // DOCUMENTOS: MODELOS E LEGISLACAO
